@@ -1,4 +1,19 @@
 <?php
+try {
+    $dsn = 'pgsql:host=db.example.com;port=5432;dbname=mydatabase';
+    
+    // DO NOT pass username/password — Kerberos will handle it via ticket cache
+    $pdo = new PDO($dsn, null, null, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+
+    echo "✅ Kerberos-authenticated connection successful!";
+} catch (PDOException $e) {
+    echo "❌ Connection failed: " . $e->getMessage();
+}
+
+
+<?php
 class KerberosPostgresPDO {
     private $host;
     private $port;
