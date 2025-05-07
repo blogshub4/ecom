@@ -1,3 +1,27 @@
+<?php
+putenv("KRB5CCNAME=/tmp/krb5cc_" . posix_getuid());
+
+$output = [];
+exec("klist", $output);
+
+$principal = null;
+
+foreach ($output as $line) {
+    if (stripos($line, 'Default principal:') !== false) {
+        $parts = explode(':', $line);
+        $principal = trim($parts[1]);
+        break;
+    }
+}
+
+if ($principal) {
+    echo "Kerberos principal is: $principal\n";
+} else {
+    echo "Principal not found or ticket is missing.\n";
+}
+?>
+
+
 pg_ident.conf
 # MAPNAME    SYSTEM-USERNAME        PG-USERNAME
 krbmap       /^[a-zA-Z0-9]+$/       appuser
