@@ -1,4 +1,44 @@
 <?php
+
+// Configuration (⚠️ DO NOT hardcode password in production)
+$principal = "youruser@INT.BAR.COM";
+$password  = "yourpassword"; // Insecure! Use only in test env
+
+// Create temp file for password input
+$tmpPasswordFile = tempnam("/tmp", "krb_pass");
+file_put_contents($tmpPasswordFile, $password . "\n");
+
+// Run kinit with the password file
+$cmd = "kinit {$principal} < {$tmpPasswordFile}";
+exec($cmd, $output, $returnVar);
+
+// Cleanup
+unlink($tmpPasswordFile);
+
+if ($returnVar !== 0) {
+    echo "❌ kinit failed.\n";
+    exit;
+}
+
+// Set Kerberos ticket cache environment
+$uid = function_exists('posix_getuid') ? posix_getuid() : getmyuid();
+putenv("KRB5CCNAME=FILE:/tmp/krb5cc_" . $uid);
+
+// Now try connecting to PostgreSQL using Kerberos
+$dsn = "pgsql:host=grdsrv001234.INT.BAR.COM;port=5432;dbname=your_db";
+$username = $principal;  // youruser@INT.BAR.COM
+$password = ""; // No password needed, Kerberos ticket used
+
+try {
+    $pdo = new PDO($dsn, $username, $password);
+    echo "✅ Connected to PostgreSQL using Kerberos.\n";
+} catch (PDOException $e) {
+    echo "❌ Connection failed: " . $e->getMessage() . "\n";
+}
+
+
+
+<?php
 putenv("KRB5CCNAME=/tmp/krb5cc_" . posix_getuid());
 
 $output = [];
