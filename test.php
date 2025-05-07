@@ -1,3 +1,22 @@
+pg_ident.conf
+# MAPNAME    SYSTEM-USERNAME        PG-USERNAME
+krbmap       /^[a-zA-Z0-9]+$/       appuser
+
+pg_hba.conf #Add this line before any other generic host entries
+# TYPE       DATABASE   USER     ADDRESS          METHOD
+hostgssenc   all        all      0.0.0.0/0        gss map=krbmap
+
+Test the Mapping
+export KRB5CCNAME=FILE:/tmp/krb5cc_$(id -u)
+kinit -k -t /etc/app.keytab your_user@INT.BAR.COM
+psql -h your-db-host -U your_user -d your_db
+SELECT current_user;
+
+
+
+
+
+
 <?php
 try {
     $dsn = 'pgsql:host=db.example.com;port=5432;dbname=mydatabase';
