@@ -1,3 +1,87 @@
+1
+<?php
+$principal = "youruser@YOUR.REALM.COM"; // Replace with your principal
+$keytab = "/path/to/your.keytab";       // Replace with the actual keytab path
+
+putenv("KRB5CCNAME=FILE:/tmp/krb5cc_" . posix_getuid());
+
+// Run kinit using the keytab
+exec("kinit -k -t $keytab $principal", $output, $return_var);
+
+if ($return_var !== 0) {
+    echo "Kerberos ticket initialization failed.\n";
+    print_r($output);
+    exit;
+}
+?>
+<?php
+$dbHost = 'your-db-host.example.com'; // DNS name, not IP
+$dbPort = '5432';
+$dbName = 'your_database';
+$krbUser = 'appuser'; // This maps from Kerberos to DB role via pg_ident.conf
+
+$dsn = "pgsql:host=$dbHost;port=$dbPort;dbname=$dbName";
+
+try {
+    $pdo = new PDO($dsn, $krbUser, null, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+    echo "✅ Kerberos-authenticated DB connection successful!";
+} catch (PDOException $e) {
+    echo "❌ Connection failed: " . $e->getMessage();
+}
+?>
+
+
+2====================
+
+putenv("KRB5CCNAME=FILE:/tmp/krb5cc_" . posix_getuid());
+
+// Run kinit using the keytab
+$principal = 'youruser@INT.BAR.COM';  // Replace with your principal
+$keytab = '/path/to/your.keytab';     // Make sure this is readable
+
+exec("kinit -k -t $keytab $principal", $output, $status);
+
+if ($status !== 0) {
+    die("❌ Kerberos kinit failed: " . implode("\n", $output));
+}
+
+
+<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+putenv("KRB5CCNAME=FILE:/tmp/krb5cc_" . posix_getuid());
+
+// Step 1: Authenticate via keytab
+$principal = 'youruser@INT.BAR.COM';         // Your Kerberos principal
+$keytab = '/path/to/your.keytab';            // Your keytab file
+exec("kinit -k -t $keytab $principal", $output, $status);
+
+if ($status !== 0) {
+    die("Kerberos auth failed:\n" . implode("\n", $output));
+}
+
+// Step 2: Connect to PostgreSQL using Kerberos (GSSAPI)
+$dsn = "pgsql:host=dbserver.int.bar.com;port=5432;dbname=yourdb";
+$user = $principal; // or a mapped DB role like 'appuser'
+$password = null;
+
+try {
+    $pdo = new PDO($dsn, $user, $password, [
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+    echo "✅ Connected to database successfully using Kerberos.";
+} catch (PDOException $e) {
+    die("❌ Connection failed: " . $e->getMessage());
+}
+?>
+
+
+
+==============
+
 <?php
 
 // Configuration (⚠️ DO NOT hardcode password in production)
