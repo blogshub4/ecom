@@ -1,3 +1,28 @@
+<?php
+$uid = posix_getuid();
+putenv("KRB5CCNAME=FILE:/tmp/krb5cc_$uid");
+
+$keytab = '/path/to/your.keytab';
+$principal = 'your_user@YOUR.REALM.COM';
+
+// Run kinit
+exec("kinit -k -t $keytab $principal 2>&1", $output, $status);
+
+if ($status !== 0) {
+    echo "kinit failed:\n";
+    echo implode("\n", $output);
+    exit;
+}
+
+echo "kinit successful\n";
+
+// List the ticket
+exec("klist", $klistOutput);
+echo implode("\n", $klistOutput);
+
+
+
+======================================
 1
 <?php
 $principal = "youruser@YOUR.REALM.COM"; // Replace with your principal
