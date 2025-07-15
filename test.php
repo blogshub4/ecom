@@ -1,3 +1,96 @@
+
+
+CREATE OR REPLACE FUNCTION sync_ip_with_history()
+RETURNS void AS $$
+DECLARE
+    current_time timestamptz := now();
+BEGIN
+    -- INSERTED: rows in ip but not in ip_snapshot
+    INSERT INTO ip_history (
+        history_id,
+        system,
+        action,
+        start_ipint, end_ip_int, continent, country, city,
+        longt, langt, region, phone, dma, msa
+        -- Add all other columns from ip here in the same order
+    )
+    SELECT
+        gen_random_uuid(),
+        tstzrange(current_time, NULL::timestamptz),
+        'inserted',
+        ip.start_ipint, ip.end_ip_int, ip.continent, ip.country, ip.city,
+        ip.longt, ip.langt, ip.region, ip.phone, ip.dma, ip.msa
+        -- Add other columns here as needed
+    FROM ip
+    LEFT JOIN ip_snapshot snap
+      ON ip.start_ipint = snap.start_ipint AND ip.end_ip_int = snap.end_ip_int
+    WHERE snap.start_ipint IS NULL;
+
+    -- UPDATED: same keys, but different values
+    INSERT INTO ip_history (
+        history_id,
+        system,
+        action,
+        start_ipint, end_ip_int, continent, country, city,
+        longt, langt, region, phone, dma, msa
+        -- Add all other columns here too
+    )
+    SELECT
+        gen_random_uuid(),
+        tstzrange(current_time, NULL::timestamptz),
+        'updated',
+        ip.start_ipint, ip.end_ip_int, ip.continent, ip.country, ip.city,
+        ip.longt, ip.langt, ip.region, ip.phone, ip.dma, ip.msa
+        -- Add other columns here as needed
+    FROM ip
+    JOIN ip_snapshot snap
+      ON ip.start_ipint = snap.start_ipint AND ip.end_ip_int = snap.end_ip_int
+    WHERE
+        ip.continent IS DISTINCT FROM snap.continent OR
+        ip.country IS DISTINCT FROM snap.country OR
+        ip.city IS DISTINCT FROM snap.city OR
+        ip.longt IS DISTINCT FROM snap.longt OR
+        ip.langt IS DISTINCT FROM snap.langt OR
+        ip.region IS DISTINCT FROM snap.region OR
+        ip.phone IS DISTINCT FROM snap.phone OR
+        ip.dma IS DISTINCT FROM snap.dma OR
+        ip.msa IS DISTINCT FROM snap.msa;
+        -- Add other column comparisons as needed
+
+    -- DELETED: rows in ip_snapshot but not in ip
+    INSERT INTO ip_history (
+        history_id,
+        system,
+        action,
+        start_ipint, end_ip_int, continent, country, city,
+        longt, langt, region, phone, dma, msa
+        -- Add all other columns from ip here
+    )
+    SELECT
+        gen_random_uuid(),
+        tstzrange(current_time, NULL::timestamptz),
+        'deleted',
+        snap.start_ipint, snap.end_ip_int, snap.continent, snap.country, snap.city,
+        snap.longt, snap.langt, snap.region, snap.phone, snap.dma, snap.msa
+        -- Add other columns here as needed
+    FROM ip_snapshot snap
+    LEFT JOIN ip
+      ON ip.start_ipint = snap.start_ipint AND ip.end_ip_int = snap.end_ip_int
+    WHERE ip.start_ipint IS NULL;
+
+    -- Refresh snapshot
+    TRUNCATE ip_snapshot;
+    INSERT INTO ip_snapshot SELECT * FROM ip;
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+=-=-=-=-=-=-=-=-=-=-=-=-=-=
+
 Create ip_snapshot table
 CREATE TABLE IF NOT EXISTS ip_snapshot AS TABLE ip WITH NO DATA;
 Create the sync_ip_with_history() function
