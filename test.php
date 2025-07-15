@@ -1,3 +1,80 @@
+CREATE OR REPLACE FUNCTION sync_ip_with_history()
+RETURNS void AS $$
+DECLARE
+    current_time TIMESTAMPTZ := now();
+BEGIN
+    -- 1. Create a temporary backup of the current IP data
+    DROP TABLE IF EXISTS ip_backup;
+    CREATE TEMP TABLE ip_backup AS TABLE ip;
+
+    -- 2. Truncate and reload the ip table (assumed handled outside this function)
+
+    -- 3. Insert new records
+    INSERT INTO ip_history (
+        history_id, start_ipint, end_ip_int, continent, country, city, longt, langt, region, phone, dma, msa,
+        -- all other fields...
+        system, action
+    )
+    SELECT
+        gen_random_uuid(),
+        i.start_ipint, i.end_ip_int, i.continent, i.country, i.city, i.longt, i.langt, i.region, i.phone, i.dma, i.msa,
+        -- other fields...
+        tstzrange(current_time, NULL), 'inserted'
+    FROM ip i
+    LEFT JOIN ip_backup b ON i.start_ipint = b.start_ipint AND i.end_ip_int = b.end_ip_int
+    WHERE b.start_ipint IS NULL;
+
+    -- 4. Insert updated records (compare all columns)
+    INSERT INTO ip_history (
+        history_id, start_ipint, end_ip_int, continent, country, city, longt, langt, region, phone, dma, msa,
+        -- all other fields...
+        system, action
+    )
+    SELECT
+        gen_random_uuid(),
+        i.start_ipint, i.end_ip_int, i.continent, i.country, i.city, i.longt, i.langt, i.region, i.phone, i.dma, i.msa,
+        -- other fields...
+        tstzrange(current_time, NULL), 'updated'
+    FROM ip i
+    JOIN ip_backup b ON i.start_ipint = b.start_ipint AND i.end_ip_int = b.end_ip_int
+    WHERE (
+        i.continent IS DISTINCT FROM b.continent OR
+        i.country IS DISTINCT FROM b.country OR
+        i.city IS DISTINCT FROM b.city OR
+        i.longt IS DISTINCT FROM b.longt OR
+        i.langt IS DISTINCT FROM b.langt OR
+        i.region IS DISTINCT FROM b.region OR
+        i.phone IS DISTINCT FROM b.phone OR
+        i.dma IS DISTINCT FROM b.dma OR
+        i.msa IS DISTINCT FROM b.msa
+        -- Add IS DISTINCT FROM for all other 30 columns
+    );
+
+    -- 5. Insert deleted records
+    INSERT INTO ip_history (
+        history_id, start_ipint, end_ip_int, continent, country, city, longt, langt, region, phone, dma, msa,
+        -- all other fields...
+        system, action
+    )
+    SELECT
+        gen_random_uuid(),
+        b.start_ipint, b.end_ip_int, b.continent, b.country, b.city, b.longt, b.langt, b.region, b.phone, b.dma, b.msa,
+        -- other fields...
+        tstzrange(current_time, NULL), 'deleted'
+    FROM ip_backup b
+    LEFT JOIN ip i ON i.start_ipint = b.start_ipint AND i.end_ip_int = b.end_ip_int
+    WHERE i.start_ipint IS NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+
+
+
+
 <?php
 $uid = posix_getuid();
 putenv("KRB5CCNAME=FILE:/tmp/krb5cc_$uid");
