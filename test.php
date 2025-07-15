@@ -1,3 +1,91 @@
+Create ip_snapshot table
+CREATE TABLE IF NOT EXISTS ip_snapshot AS TABLE ip WITH NO DATA;
+Create the sync_ip_with_history() function
+CREATE OR REPLACE FUNCTION sync_ip_with_history()
+RETURNS VOID AS $$
+DECLARE
+    current_time TIMESTAMPTZ := now();
+BEGIN
+    -- INSERTED records
+    INSERT INTO ip_history (
+        system, action,
+        start_ipint, end_ip_int, continent, country, city, longt, langt, region, phone, dma, msa
+    )
+    SELECT
+        tstzrange(current_time, NULL), 'inserted',
+        ip.start_ipint, ip.end_ip_int, ip.continent, ip.country, ip.city,
+        ip.longt, ip.langt, ip.region, ip.phone, ip.dma, ip.msa
+    FROM ip
+    LEFT JOIN ip_snapshot snap
+      ON ip.start_ipint = snap.start_ipint AND ip.end_ip_int = snap.end_ip_int
+    WHERE snap.start_ipint IS NULL;
+
+    -- UPDATED records
+    INSERT INTO ip_history (
+        system, action,
+        start_ipint, end_ip_int, continent, country, city, longt, langt, region, phone, dma, msa
+    )
+    SELECT
+        tstzrange(current_time, NULL), 'updated',
+        ip.start_ipint, ip.end_ip_int, ip.continent, ip.country, ip.city,
+        ip.longt, ip.langt, ip.region, ip.phone, ip.dma, ip.msa
+    FROM ip
+    JOIN ip_snapshot snap
+      ON ip.start_ipint = snap.start_ipint AND ip.end_ip_int = snap.end_ip_int
+    WHERE ip.continent IS DISTINCT FROM snap.continent
+       OR ip.country IS DISTINCT FROM snap.country
+       OR ip.city IS DISTINCT FROM snap.city
+       OR ip.longt IS DISTINCT FROM snap.longt
+       OR ip.langt IS DISTINCT FROM snap.langt
+       OR ip.region IS DISTINCT FROM snap.region
+       OR ip.phone IS DISTINCT FROM snap.phone
+       OR ip.dma IS DISTINCT FROM snap.dma
+       OR ip.msa IS DISTINCT FROM snap.msa;
+
+    -- DELETED records
+    INSERT INTO ip_history (
+        system, action,
+        start_ipint, end_ip_int, continent, country, city, longt, langt, region, phone, dma, msa
+    )
+    SELECT
+        tstzrange(current_time, NULL), 'deleted',
+        snap.start_ipint, snap.end_ip_int, snap.continent, snap.country, snap.city,
+        snap.longt, snap.langt, snap.region, snap.phone, snap.dma, snap.msa
+    FROM ip_snapshot snap
+    LEFT JOIN ip
+      ON ip.start_ipint = snap.start_ipint AND ip.end_ip_int = snap.end_ip_int
+    WHERE ip.start_ipint IS NULL;
+
+    -- Refresh snapshot
+    TRUNCATE ip_snapshot;
+    INSERT INTO ip_snapshot SELECT * FROM ip;
+
+END;
+$$ LANGUAGE plpgsql;
+
+Create the trigger function to call sync
+CREATE OR REPLACE FUNCTION trigger_sync_ip_history()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM sync_ip_with_history();
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+Attach the trigger to ip
+DROP TRIGGER IF EXISTS sync_ip_on_insert ON ip;
+
+CREATE TRIGGER sync_ip_on_insert
+AFTER INSERT ON ip
+FOR EACH STATEMENT
+EXECUTE FUNCTION trigger_sync_ip_history();
+
+
+
+
+
+==============================================
+
 CREATE OR REPLACE FUNCTION sync_ip_with_history()
 RETURNS void AS $$
 DECLARE
