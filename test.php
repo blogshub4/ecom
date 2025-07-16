@@ -1,3 +1,129 @@
+CREATE OR REPLACE FUNCTION qu.log_ip_test_change()
+RETURNS TRIGGER AS $$
+DECLARE
+    current_time timestamptz := now();
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO qu.ip_history_test (
+            history_id,
+            systime,
+            action,
+            start_ip_int,
+            end_ip_int,
+            continent,
+            country,
+            city,
+            longt,
+            langt,
+            region,
+            phone,
+            dma,
+            msa,
+            countryiso2
+        ) VALUES (
+            gen_random_uuid(),
+            tstzrange(current_time, NULL::timestamptz),
+            'insert',
+            NEW.start_ip_int,
+            NEW.end_ip_int,
+            NEW.continent,
+            NEW.country,
+            NEW.city,
+            NEW.longt,
+            NEW.langt,
+            NEW.region,
+            NEW.phone,
+            NEW.dma,
+            NEW.msa,
+            NEW.countryiso2
+        );
+    ELSIF TG_OP = 'UPDATE' THEN
+        INSERT INTO qu.ip_history_test (
+            history_id,
+            systime,
+            action,
+            start_ip_int,
+            end_ip_int,
+            continent,
+            country,
+            city,
+            longt,
+            langt,
+            region,
+            phone,
+            dma,
+            msa,
+            countryiso2
+        ) VALUES (
+            gen_random_uuid(),
+            tstzrange(current_time, NULL::timestamptz),
+            'update',
+            NEW.start_ip_int,
+            NEW.end_ip_int,
+            NEW.continent,
+            NEW.country,
+            NEW.city,
+            NEW.longt,
+            NEW.langt,
+            NEW.region,
+            NEW.phone,
+            NEW.dma,
+            NEW.msa,
+            NEW.countryiso2
+        );
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO qu.ip_history_test (
+            history_id,
+            systime,
+            action,
+            start_ip_int,
+            end_ip_int,
+            continent,
+            country,
+            city,
+            longt,
+            langt,
+            region,
+            phone,
+            dma,
+            msa,
+            countryiso2
+        ) VALUES (
+            gen_random_uuid(),
+            tstzrange(current_time, NULL::timestamptz),
+            'delete',
+            OLD.start_ip_int,
+            OLD.end_ip_int,
+            OLD.continent,
+            OLD.country,
+            OLD.city,
+            OLD.longt,
+            OLD.langt,
+            OLD.region,
+            OLD.phone,
+            OLD.dma,
+            OLD.msa,
+            OLD.countryiso2
+        );
+    END IF;
+
+    RETURN NULL;  -- AFTER trigger must return NULL
+END;
+$$ LANGUAGE plpgsql;
+
+trg
+
+DROP TRIGGER IF EXISTS trg_log_ip_test_change ON qu.ip_test;
+
+CREATE TRIGGER trg_log_ip_test_change
+AFTER INSERT OR UPDATE OR DELETE ON qu.ip_test
+FOR EACH ROW
+EXECUTE FUNCTION qu.log_ip_test_change();
+
+
+=
+
+
 CREATE OR REPLACE FUNCTION log_ip_change()
 RETURNS TRIGGER AS $$
 DECLARE
