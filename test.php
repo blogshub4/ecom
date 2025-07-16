@@ -1,3 +1,73 @@
+CREATE OR REPLACE FUNCTION log_ip_change()
+RETURNS TRIGGER AS $$
+DECLARE
+    current_time timestamptz := now();
+BEGIN
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO ip_history (
+            history_id, systime, action,
+            start_ip_int, end_ip_int, continent, country, city,
+            longt, langt, region, phone, dma, msa, countryiso2
+            -- add any other fields from ip
+        )
+        VALUES (
+            gen_random_uuid(),
+            tstzrange(current_time, NULL::timestamptz),
+            'insert'::record_action,
+            NEW.start_ip_int, NEW.end_ip_int, NEW.continent, NEW.country, NEW.city,
+            NEW.longt, NEW.langt, NEW.region, NEW.phone, NEW.dma, NEW.msa, NEW.countryiso2
+            -- same order as above
+        );
+
+    ELSIF TG_OP = 'UPDATE' THEN
+        IF NEW IS DISTINCT FROM OLD THEN
+            INSERT INTO ip_history (
+                history_id, systime, action,
+                start_ip_int, end_ip_int, continent, country, city,
+                longt, langt, region, phone, dma, msa, countryiso2
+            )
+            VALUES (
+                gen_random_uuid(),
+                tstzrange(current_time, NULL::timestamptz),
+                'update'::record_action,
+                NEW.start_ip_int, NEW.end_ip_int, NEW.continent, NEW.country, NEW.city,
+                NEW.longt, NEW.langt, NEW.region, NEW.phone, NEW.dma, NEW.msa, NEW.countryiso2
+            );
+        END IF;
+
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO ip_history (
+            history_id, systime, action,
+            start_ip_int, end_ip_int, continent, country, city,
+            longt, langt, region, phone, dma, msa, countryiso2
+        )
+        VALUES (
+            gen_random_uuid(),
+            tstzrange(current_time, NULL::timestamptz),
+            'delete'::record_action,
+            OLD.start_ip_int, OLD.end_ip_int, OLD.continent, OLD.country, OLD.city,
+            OLD.longt, OLD.langt, OLD.region, OLD.phone, OLD.dma, OLD.msa, OLD.countryiso2
+        );
+    END IF;
+
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+Trigger 
+DROP TRIGGER IF EXISTS trg_log_ip_change ON ip;
+
+CREATE TRIGGER trg_log_ip_change
+AFTER INSERT OR UPDATE OR DELETE ON ip
+FOR EACH ROW
+EXECUTE FUNCTION log_ip_change();
+ 
+
+
+
+=====----------------------------
+
 
 
 CREATE OR REPLACE FUNCTION sync_ip_with_history()
