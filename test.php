@@ -1,3 +1,112 @@
+CREATE OR REPLACE FUNCTION qu.sync_ip_with_history()
+RETURNS void AS $$
+DECLARE
+    now_ts timestamptz := now();
+BEGIN
+    -- temporary view: latest versions of each key from history
+    WITH latest_hist AS (
+      SELECT DISTINCT ON (start_ip_int, end_ip_int)
+          *
+      FROM qu.ip_history_test
+      ORDER BY start_ip_int, end_ip_int, lower(systime) DESC
+    )
+    -- 1. INSERT new rows
+    INSERT INTO qu.ip_history_test (
+       history_id, systime, action,
+       start_ip_int, end_ip_int, continent, country, city,
+       longt, langt, region, phone, dma, msa, countryiso2
+    )
+    SELECT
+        gen_random_uuid(),
+        tstzrange(now_ts, NULL::timestamptz),
+        'insert',
+        CUR.start_ip_int, CUR.end_ip_int, CUR.continent, CUR.country, CUR.city,
+        CUR.longt, CUR.langt, CUR.region, CUR.phone, CUR.dma, CUR.msa, CUR.countryiso2
+    FROM qu.ip_test CUR
+    LEFT JOIN latest_hist LH
+      ON CUR.start_ip_int = LH.start_ip_int
+     AND CUR.end_ip_int   = LH.end_ip_int
+    WHERE LH.start_ip_int IS NULL;
+
+    -- 2. UPDATE changed rows
+    INSERT INTO qu.ip_history_test (
+       history_id, systime, action,
+       start_ip_int, end_ip_int, continent, country, city,
+       longt, langt, region, phone, dma, msa, countryiso2
+    )
+    SELECT
+       gen_random_uuid(),
+       tstzrange(now_ts, NULL::timestamptz),
+       'update',
+       CUR.start_ip_int, CUR.end_ip_int, CUR.continent, CUR.country, CUR.city,
+       CUR.longt, CUR.langt, CUR.region, CUR.phone, CUR.dma, CUR.msa, CUR.countryiso2
+    FROM qu.ip_test CUR
+    JOIN latest_hist LH
+      ON CUR.start_ip_int = LH.start_ip_int
+     AND CUR.end_ip_int   = LH.end_ip_int
+    WHERE
+      (CUR.continent   IS DISTINCT FROM LH.continent) OR
+      (CUR.country     IS DISTINCT FROM LH.country)   OR
+      (CUR.city        IS DISTINCT FROM LH.city)      OR
+      (CUR.longt       IS DISTINCT FROM LH.longt)     OR
+      (CUR.langt       IS DISTINCT FROM LH.langt)     OR
+      (CUR.region      IS DISTINCT FROM LH.region)    OR
+      (CUR.phone       IS DISTINCT FROM LH.phone)     OR
+      (CUR.dma         IS DISTINCT FROM LH.dma)       OR
+      (CUR.msa         IS DISTINCT FROM LH.msa)       OR
+      (CUR.countryiso2 IS DISTINCT FROM LH.countryiso2);
+
+    -- 3. DELETE removed rows
+    INSERT INTO qu.ip_history_test (
+       history_id, systime, action,
+       start_ip_int, end_ip_int, continent, country, city,
+       longt, langt, region, phone, dma, msa, countryiso2
+    )
+    SELECT
+       gen_random_uuid(),
+       tstzrange(now_ts, NULL::timestamptz),
+       'delete',
+       LH.start_ip_int, LH.end_ip_int, LH.continent, LH.country, LH.city,
+       LH.longt, LH.langt, LH.region, LH.phone, LH.dma, LH.msa, LH.countryiso2
+    FROM latest_hist LH
+    LEFT JOIN qu.ip_test CUR
+      ON CUR.start_ip_int = LH.start_ip_int
+     AND CUR.end_ip_int   = LH.end_ip_int
+    WHERE CUR.start_ip_int IS NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+=-=-=-=
+
+CREATE OR REPLACE FUNCTION qu.trigger_ip_sync()
+RETURNS TRIGGER AS $$
+BEGIN
+    PERFORM qu.sync_ip_with_history();
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_ip_sync ON qu.ip_test;
+
+CREATE TRIGGER trg_ip_sync
+AFTER INSERT ON qu.ip_test
+FOR EACH STATEMENT
+EXECUTE FUNCTION qu.trigger_ip_sync();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 CREATE OR REPLACE FUNCTION qu.log_ip_test_change()
 RETURNS TRIGGER AS $$
 DECLARE
