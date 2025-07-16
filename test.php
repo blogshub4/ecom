@@ -3,14 +3,13 @@ RETURNS void AS $$
 DECLARE
     now_ts timestamptz := now();
 BEGIN
-    -- temporary view: latest versions of each key from history
+    -- 1. INSERT new rows
     WITH latest_hist AS (
       SELECT DISTINCT ON (start_ip_int, end_ip_int)
           *
       FROM qu.ip_history_test
       ORDER BY start_ip_int, end_ip_int, lower(systime) DESC
     )
-    -- 1. INSERT new rows
     INSERT INTO qu.ip_history_test (
        history_id, systime, action,
        start_ip_int, end_ip_int, continent, country, city,
@@ -29,6 +28,12 @@ BEGIN
     WHERE LH.start_ip_int IS NULL;
 
     -- 2. UPDATE changed rows
+    WITH latest_hist AS (
+      SELECT DISTINCT ON (start_ip_int, end_ip_int)
+          *
+      FROM qu.ip_history_test
+      ORDER BY start_ip_int, end_ip_int, lower(systime) DESC
+    )
     INSERT INTO qu.ip_history_test (
        history_id, systime, action,
        start_ip_int, end_ip_int, continent, country, city,
@@ -57,6 +62,12 @@ BEGIN
       (CUR.countryiso2 IS DISTINCT FROM LH.countryiso2);
 
     -- 3. DELETE removed rows
+    WITH latest_hist AS (
+      SELECT DISTINCT ON (start_ip_int, end_ip_int)
+          *
+      FROM qu.ip_history_test
+      ORDER BY start_ip_int, end_ip_int, lower(systime) DESC
+    )
     INSERT INTO qu.ip_history_test (
        history_id, systime, action,
        start_ip_int, end_ip_int, continent, country, city,
@@ -75,6 +86,7 @@ BEGIN
     WHERE CUR.start_ip_int IS NULL;
 END;
 $$ LANGUAGE plpgsql;
+
 
 
 =-=-=-=
