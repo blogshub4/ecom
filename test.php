@@ -1,3 +1,50 @@
+
+import os
+from flask import Flask, jsonify
+from pyspark.sql import SparkSession
+
+app = Flask(__name__)
+
+# Setup Spark
+os.environ["PYSPARK_SUBMIT_ARGS"] = "--driver-memory 2g pyspark-shell"
+spark = SparkSession.builder \
+    .appName("IP History Viewer") \
+    .master("local[*]") \
+    .config("spark.jars", "C:/path/to/postgresql-42.7.4.jar") \
+    .getOrCreate()
+
+# Replace with your real PostgreSQL connection info
+POSTGRES_URL = "jdbc:postgresql://your-host:5432/your_db"
+POSTGRES_PROPS = {
+    "user": "your_user",
+    "password": "your_password",
+    "driver": "org.postgresql.Driver"
+}
+
+@app.route("/")
+def home():
+    # Read IP history data
+    df = spark.read.jdbc(
+        url=POSTGRES_URL,
+        table="qu.ip_history_test",
+        properties=POSTGRES_PROPS
+    )
+
+    # Show recent records only
+    df = df.orderBy(df["systime"].desc()).limit(10)
+
+    # Convert to JSON-friendly format
+    records = df.toPandas().to_dict(orient="records")
+    return jsonify(records)
+
+if __name__ == "__main__":
+    app.run(debug=True)
+
+
+=-=-=-=-=
+
+
+
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder \
