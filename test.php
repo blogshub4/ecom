@@ -5,10 +5,15 @@ spark = SparkSession.builder \
     .master("local[*]") \
     .getOrCreate()
 
-df = spark.range(5)
+# Create sample data
+data = [("Alice", 1), ("Bob", 2), ("Charlie", 3)]
+columns = ["name", "id"]
+
+df = spark.createDataFrame(data, columns)
 df.show()
 
 spark.stop()
+
 
 
 -----==
