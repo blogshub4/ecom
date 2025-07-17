@@ -1,3 +1,26 @@
+Setup Spark Env
+pip install pyspark psycopg2-binary
+
+Ensure your Spark session includes the Postgres JDBC driver:
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("IP History Analysis") \
+    .config("spark.jars", "/path/postgresql-42.7.4.jar") \
+    .getOrCreate()
+
+Load the ip_history_test Table via JDBC
+df = spark.read \
+    .format("jdbc") \
+    .option("url", "jdbc:postgresql://HOST:5432/your_db") \
+    .option("dbtable", "qu.ip_history_test") \
+    .option("user", "your_user") \
+    .option("password", "your_pass") \
+    .load()
+df.show(5)
+df.printSchema()
+
+=-==============--------------
 CREATE OR REPLACE FUNCTION qu.sync_ip_with_history()
 RETURNS void AS $$
 DECLARE
