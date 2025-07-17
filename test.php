@@ -1,3 +1,46 @@
+wget https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.7/postgresql-42.7.7.jar
+spark = SparkSession.builder \
+    .appName("IP History Analysis") \
+    .config("spark.jars", "/home/you/jars/postgresql-42.7.7.jar") \
+    .getOrCreate()
+
+df = spark.read \
+    .format("jdbc") \
+    .option("url", "jdbc:postgresql://localhost:5432/your_db") \
+    .option("dbtable", "qu.ip_history_test") \
+    .option("user", "your_user") \
+    .option("password", "your_pass") \
+    .option("driver", "org.postgresql.Driver") \
+    .load()
+
+df.show()
+
+-0000-
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("Azure Postgres Connect") \
+    .config("spark.jars", "/path/to/postgresql-42.7.7.jar") \
+    .getOrCreate()
+
+df = spark.read \
+    .format("jdbc") \
+    .option("url", "jdbc:postgresql://<your-server>.postgres.database.azure.com:5432/<your-db>?sslmode=require") \
+    .option("dbtable", "qu.ip_history_test") \
+    .option("user", "your_user@<your-server>") \
+    .option("password", "your_password") \
+    .option("driver", "org.postgresql.Driver") \
+    .load()
+
+df.show()
+
+
+        .option("ssl", "true") \
+.option("sslmode", "verify-ca") \
+.option("sslrootcert", "/path/to/BaltimoreCyberTrustRoot.crt.pem")
+
+
+
 Setup Spark Env
 pip install pyspark psycopg2-binary
 
