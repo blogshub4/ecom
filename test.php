@@ -1,3 +1,7 @@
+setx SPARK_HOME "C:\spark"
+setx PATH "%PATH%;C:\spark\bin"
+
+
 mkdir %CONDA_PREFIX%\etc\conda\activate.d
 mkdir %CONDA_PREFIX%\etc\conda\deactivate.d
 
