@@ -1,4 +1,245 @@
 
+pip install streamlit pandas psycopg2-binary plotly
+
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import psycopg2
+from datetime import datetime
+
+# --- DB Config ---
+DB_HOST = "your_host"
+DB_PORT = "5432"
+DB_NAME = "your_db"
+DB_USER = "your_user"
+DB_PASS = "your_password"
+
+# --- Connect to PostgreSQL ---
+@st.cache_resource
+def get_connection():
+    return psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS
+    )
+
+@st.cache_data(ttl=600)
+def load_data():
+    query = """
+        SELECT *, lower(systime) AS change_time
+        FROM qu.ip_history_test
+        ORDER BY change_time DESC
+    """
+    return pd.read_sql(query, get_connection())
+
+# --- UI: Sidebar Filters ---
+st.sidebar.header("🔍 Filter Options")
+
+df = load_data()
+
+min_date = df["change_time"].min().date()
+max_date = df["change_time"].max().date()
+
+date_range = st.sidebar.date_input("Date Range", [min_date, max_date])
+action_filter = st.sidebar.multiselect("Action Type", df["action"].unique(), default=df["action"].unique())
+country_filter = st.sidebar.multiselect("Country", sorted(df["country"].dropna().unique()))
+
+# --- Filter Logic ---
+filtered_df = df[
+    (df["change_time"].dt.date >= date_range[0]) &
+    (df["change_time"].dt.date <= date_range[1]) &
+    (df["action"].isin(action_filter))
+]
+
+if country_filter:
+    filtered_df = filtered_df[filtered_df["country"].isin(country_filter)]
+
+# --- Dashboard Layout ---
+st.title("📊 IP Change History Dashboard")
+
+st.markdown(f"Showing **{len(filtered_df)}** records from **{min_date}** to **{max_date}**")
+
+# --- Summary Cards ---
+col1, col2, col3 = st.columns(3)
+col1.metric("📥 Inserted", (df["action"] == "insert").sum())
+col2.metric("✏️ Updated", (df["action"] == "update").sum())
+col3.metric("🗑️ Deleted", (df["action"] == "delete").sum())
+
+# --- Change Over Time Chart ---
+st.subheader("📈 Change Events Over Time")
+daily_counts = filtered_df.groupby([filtered_df["change_time"].dt.date, "action"]).size().reset_index(name="count")
+
+fig = px.bar(
+    daily_counts,
+    x="change_time",
+    y="count",
+    color="action",
+    barmode="group",
+    title="Insert / Update / Delete Trends"
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# --- Table View ---
+st.subheader("📋 Detailed Change History")
+st.dataframe(filtered_df.drop(columns=["systime"]), use_container_width=True)
+
+# Optional CSV download
+csv = filtered_df.to_csv(index=False).encode("utf-8")
+st.download_button("⬇️ Download CSV", csv, "ip_history_export.csv", "text/csv")
+
+
+        streamlit run streamlit_app.py
+        
+ip_streamlit_dashboard/
+├── streamlit_app.py              <-- Main dashboard
+├── pages/
+│   └── 1_Map_View.py             <-- Map page
+    pages/1_Map_View.py
+
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import psycopg2
+
+# --- DB Connection ---
+@st.cache_resource
+def get_connection():
+    return psycopg2.connect(
+        host="your_host",
+        port="5432",
+        dbname="your_db",
+        user="your_user",
+        password="your_password"
+    )
+
+@st.cache_data(ttl=600)
+def load_data():
+    query = """
+        SELECT *,
+               lower(systime) AS change_time
+        FROM qu.ip_history_test
+        WHERE longt IS NOT NULL AND langt IS NOT NULL
+        ORDER BY change_time DESC
+    """
+    return pd.read_sql(query, get_connection())
+
+# --- Load Data ---
+df = load_data()
+
+st.title("🌐 IP Change Map View")
+
+# --- Filters ---
+st.sidebar.subheader("🌍 Map Filters")
+actions = st.sidebar.multiselect("Action Type", df["action"].unique(), default=df["action"].unique())
+date_range = st.sidebar.date_input("Date Range", [df["change_time"].min().date(), df["change_time"].max().date()])
+
+filtered_df = df[
+    (df["action"].isin(actions)) &
+    (df["change_time"].dt.date >= date_range[0]) &
+    (df["change_time"].dt.date <= date_range[1])
+]
+
+# --- Map Plot ---
+if filtered_df.empty:
+    st.warning("No data for selected filters.")
+else:
+    st.markdown(f"Showing **{len(filtered_df)}** records on map.")
+
+    fig = px.scatter_geo(
+        filtered_df,
+        lat="langt",
+        lon="longt",
+        color="action",
+        hover_name="country",
+        hover_data=["city", "region", "change_time"],
+        title="IP Changes by Geolocation",
+        projection="natural earth",
+        opacity=0.7,
+        height=600
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+        pages/1_Map_View.py
+
+     
+        import streamlit as st
+import pandas as pd
+import plotly.express as px
+import psycopg2
+
+# --- DB Connection ---
+@st.cache_resource
+def get_connection():
+    return psycopg2.connect(
+        host="your_host",
+        port="5432",
+        dbname="your_db",
+        user="your_user",
+        password="your_password"
+    )
+
+@st.cache_data(ttl=600)
+def load_data():
+    query = """
+        SELECT *,
+               lower(systime) AS change_time
+        FROM qu.ip_history_test
+        WHERE longt IS NOT NULL AND langt IS NOT NULL
+        ORDER BY change_time ASC
+    """
+    return pd.read_sql(query, get_connection())
+
+# --- Load Data ---
+df = load_data()
+
+st.title("🌍 Animated IP Change Timeline")
+
+# Format date column
+df["change_date"] = df["change_time"].dt.date.astype(str)  # for animation_frame
+
+# --- Filters ---
+st.sidebar.header("📅 Filters")
+actions = st.sidebar.multiselect("Action", df["action"].unique(), default=df["action"].unique())
+date_range = st.sidebar.date_input("Date range", [df["change_time"].min().date(), df["change_time"].max().date()])
+
+filtered_df = df[
+    (df["action"].isin(actions)) &
+    (df["change_time"].dt.date >= date_range[0]) &
+    (df["change_time"].dt.date <= date_range[1])
+]
+
+# --- Display Map Animation ---
+if filtered_df.empty:
+    st.warning("No data found for selected filters.")
+else:
+    st.markdown(f"Showing **{len(filtered_df)}** records")
+
+    fig = px.scatter_geo(
+        filtered_df,
+        lat="langt",
+        lon="longt",
+        color="action",
+        animation_frame="change_date",
+        hover_name="country",
+        hover_data=["city", "region", "change_time"],
+        projection="natural earth",
+        title="📍 IP Changes Over Time (Animated)",
+        opacity=0.7,
+        height=650
+    )
+
+    fig.update_layout(margin={"r":0,"t":50,"l":0,"b":0})
+    st.plotly_chart(fig, use_container_width=True)
+
+
+
+=======================================================
+
 import os
 from flask import Flask, jsonify
 from pyspark.sql import SparkSession
