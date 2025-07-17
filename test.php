@@ -1,3 +1,13 @@
+@echo off
+set SPARK_HOME=C:\spark\spark-3.4.4-bin-hadoop3
+set PATH=%SPARK_HOME%\bin;%PATH%
+
+@echo off
+set PATH=%PATH:%SPARK_HOME%\bin;=%
+set SPARK_HOME=
+
+
+
 setx SPARK_HOME "C:\spark"
 setx PATH "%PATH%;C:\spark\bin"
 
