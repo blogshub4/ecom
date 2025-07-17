@@ -1,3 +1,27 @@
+mkdir %CONDA_PREFIX%\etc\conda\activate.d
+mkdir %CONDA_PREFIX%\etc\conda\deactivate.d
+
+@echo off
+set "JAVA_HOME=C:\devhome\tools\oraclejdk17\current"
+set "PATH=%JAVA_HOME%\bin;%PATH%"
+
+
+%CONDA_PREFIX%\etc\conda\activate.d\env_vars.bat
+
+@echo off
+REM Remove Java bin folder from PATH
+set "PATH=%PATH:C:\devhome\tools\oraclejdk17\current\bin;=%"
+set "JAVA_HOME="
+
+%CONDA_PREFIX%\etc\conda\deactivate.d\env_vars.bat
+
+conda deactivate
+conda activate spark_test
+
+
+/////////////11111111111111111111
+
+
 Download here:
 https://archive.apache.org/dist/spark/spark-3.3.2/
 
