@@ -1,3 +1,17 @@
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder \
+    .appName("TestApp") \
+    .master("local[*]") \
+    .getOrCreate()
+
+df = spark.range(5)
+df.show()
+
+spark.stop()
+
+
+-----==
 @echo off
 set SPARK_HOME=C:\spark\spark-3.4.4-bin-hadoop3
 set PATH=%SPARK_HOME%\bin;%PATH%
