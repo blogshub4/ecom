@@ -1,3 +1,34 @@
+Download here:
+https://archive.apache.org/dist/spark/spark-3.3.2/
+
+Choose:
+spark-3.3.2-bin-hadoop3.tgz or .zip
+
+Extract to: C:\spark\
+
+Step 3: Set Environment Variables
+Open CMD as Administrator, then run:
+
+bash
+Copy
+Edit
+setx JAVA_HOME "C:\Program Files\Eclipse Adoptium\jdk-11.0.X"
+setx SPARK_HOME "C:\spark\spark-3.3.2-bin-hadoop3"
+setx PATH "%JAVA_HOME%\bin;%SPARK_HOME%\bin;%PATH%"
+🔁 Restart your terminal to apply changes.
+
+Test:
+
+bash
+Copy
+Edit
+java -version
+spark-submit --version
+
+
+
+
+
 wget https://repo1.maven.org/maven2/org/postgresql/postgresql/42.7.7/postgresql-42.7.7.jar
 spark = SparkSession.builder \
     .appName("IP History Analysis") \
