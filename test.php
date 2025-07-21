@@ -1,3 +1,53 @@
+# Imports
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import psycopg2
+from datetime import datetime
+
+# Page Config
+st.set_page_config(page_title="IP Change Tracker", layout="wide")
+
+# Custom Header
+def render_custom_header():
+    ...
+render_custom_header()
+
+# Hide Streamlit branding
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# DB setup
+@st.cache_resource
+def get_connection():
+    ...
+
+@st.cache_data(ttl=600)
+def load_data():
+    ...
+
+# Sidebar Filters
+st.sidebar.header("🔍 Filter Options")
+...
+
+# Dashboard Content
+st.title("📊 IP Change History Dashboard")
+...
+
+# Chart
+...
+
+# Table + Download
+...
+
+# Hide Streamlit menu
+st.markdown(hide_st_style, unsafe_allow_html=True)
+
+
+
+
+
+///////////////////////////////////////////////////////////
+
 
 pip install streamlit pandas psycopg2-binary plotly
 
