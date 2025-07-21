@@ -1,47 +1,160 @@
-# Imports
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import psycopg2
 from datetime import datetime
 
-# Page Config
+# --- Configuration ---
 st.set_page_config(page_title="IP Change Tracker", layout="wide")
 
-# Custom Header
+# --- Custom Header ---
 def render_custom_header():
-    ...
+    st.markdown("""
+        <style>
+        .custom-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #003366;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+        }
+        .custom-header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: white;
+            min-width: 120px;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.2);
+            z-index: 1;
+        }
+        .dropdown-content a {
+            color: black;
+            padding: 10px 14px;
+            text-decoration: none;
+            display: block;
+        }
+        .dropdown:hover .dropdown-content {
+            display: block;
+        }
+        .dropdown-content a:hover {
+            background-color: #ddd;
+        }
+        </style>
+
+        <div class="custom-header">
+            <h1>📡 IP Change Dashboard</h1>
+            <div class="dropdown">
+                <span style="cursor:pointer;">☰ Menu</span>
+                <div class="dropdown-content">
+                    <a href="#">Refresh</a>
+                    <a href="#">Settings</a>
+                    <a href="#">Logout</a>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
 render_custom_header()
 
-# Hide Streamlit branding
+# --- Hide Streamlit Default UI Elements ---
+hide_st_style = """
+    <style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+"""
 st.markdown(hide_st_style, unsafe_allow_html=True)
 
-# DB setup
+# --- DB Config (Replace with real credentials) ---
+DB_HOST = "your_host"
+DB_PORT = "5432"
+DB_NAME = "your_db"
+DB_USER = "your_user"
+DB_PASS = "your_password"
+
+# --- Database Connection ---
 @st.cache_resource
 def get_connection():
-    ...
+    return psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        dbname=DB_NAME,
+        user=DB_USER,
+        password=DB_PASS
+    )
 
+# --- Load IP History Data ---
 @st.cache_data(ttl=600)
 def load_data():
-    ...
+    query = """
+        SELECT *, lower(systime) AS change_time
+        FROM qu.ip_history_test
+        ORDER BY change_time DESC
+    """
+    return pd.read_sql(query, get_connection())
 
-# Sidebar Filters
+df = load_data()
+
+# --- Sidebar Filters ---
 st.sidebar.header("🔍 Filter Options")
-...
 
-# Dashboard Content
-st.title("📊 IP Change History Dashboard")
-...
+min_date = df["change_time"].min().date()
+max_date = df["change_time"].max().date()
 
-# Chart
-...
+date_range = st.sidebar.date_input("Date Range", [min_date, max_date])
+action_filter = st.sidebar.multiselect("Action Type", df["action"].unique(), default=df["action"].unique())
+country_filter = st.sidebar.multiselect("Country", sorted(df["country"].dropna().unique()))
 
-# Table + Download
-...
+# --- Apply Filters ---
+filtered_df = df[
+    (df["change_time"].dt.date >= date_range[0]) &
+    (df["change_time"].dt.date <= date_range[1]) &
+    (df["action"].isin(action_filter))
+]
+if country_filter:
+    filtered_df = filtered_df[filtered_df["country"].isin(country_filter)]
 
-# Hide Streamlit menu
-st.markdown(hide_st_style, unsafe_allow_html=True)
+# --- Dashboard Header ---
+st.markdown(f"### Showing **{len(filtered_df)}** records from **{min_date}** to **{max_date}**")
 
+# --- Summary Cards ---
+col1, col2, col3 = st.columns(3)
+col1.metric("📥 Inserted", (df["action"] == "insert").sum())
+col2.metric("✏️ Updated", (df["action"] == "update").sum())
+col3.metric("🗑️ Deleted", (df["action"] == "delete").sum())
+
+# --- Bar Chart: Events Over Time ---
+st.subheader("📈 Change Events Over Time")
+daily_counts = filtered_df.groupby([filtered_df["change_time"].dt.date, "action"]).size().reset_index(name="count")
+fig = px.bar(
+    daily_counts,
+    x="change_time",
+    y="count",
+    color="action",
+    barmode="group",
+    title="Insert / Update / Delete Trends"
+)
+st.plotly_chart(fig, use_container_width=True)
+
+# --- Data Table ---
+st.subheader("📋 Detailed Change History")
+st.dataframe(filtered_df.drop(columns=["systime"]), use_container_width=True)
+
+# --- Download Button ---
+csv = filtered_df.to_csv(index=False).encode("utf-8")
+st.download_button("⬇️ Download CSV", csv, "ip_history_export.csv", "text/csv")
 
 
 
