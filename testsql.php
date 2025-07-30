@@ -1,3 +1,52 @@
+-- 2. UPDATE changed rows with changed fields tracking
+WITH latest_hist AS (
+  SELECT DISTINCT ON (start_ip_int, end_ip_int)
+      *
+  FROM qu.ip_history_test
+  ORDER BY start_ip_int, end_ip_int, lower(systime) DESC
+)
+INSERT INTO qu.ip_history_test (
+   history_id, systime, action,
+   start_ip_int, end_ip_int, continent, country, city,
+   longt, langt, region, phone, dma, msa, countryiso2,
+   changed_fields
+)
+SELECT
+   gen_random_uuid(),
+   tstzrange(now_ts, NULL::timestamptz),
+   'update',
+   CUR.start_ip_int, CUR.end_ip_int, CUR.continent, CUR.country, CUR.city,
+   CUR.longt, CUR.langt, CUR.region, CUR.phone, CUR.dma, CUR.msa, CUR.countryiso2,
+   ARRAY_REMOVE(ARRAY[
+       CASE WHEN CUR.continent   IS DISTINCT FROM LH.continent THEN 'continent' END,
+       CASE WHEN CUR.country     IS DISTINCT FROM LH.country THEN 'country' END,
+       CASE WHEN CUR.city        IS DISTINCT FROM LH.city THEN 'city' END,
+       CASE WHEN CUR.longt       IS DISTINCT FROM LH.longt THEN 'longt' END,
+       CASE WHEN CUR.langt       IS DISTINCT FROM LH.langt THEN 'langt' END,
+       CASE WHEN CUR.region      IS DISTINCT FROM LH.region THEN 'region' END,
+       CASE WHEN CUR.phone       IS DISTINCT FROM LH.phone THEN 'phone' END,
+       CASE WHEN CUR.dma         IS DISTINCT FROM LH.dma THEN 'dma' END,
+       CASE WHEN CUR.msa         IS DISTINCT FROM LH.msa THEN 'msa' END,
+       CASE WHEN CUR.countryiso2 IS DISTINCT FROM LH.countryiso2 THEN 'countryiso2' END
+   ], NULL)
+FROM qu.ip_test CUR
+JOIN latest_hist LH
+  ON CUR.start_ip_int = LH.start_ip_int
+ AND CUR.end_ip_int   = LH.end_ip_int
+WHERE
+  (CUR.continent   IS DISTINCT FROM LH.continent) OR
+  (CUR.country     IS DISTINCT FROM LH.country)   OR
+  (CUR.city        IS DISTINCT FROM LH.city)      OR
+  (CUR.longt       IS DISTINCT FROM LH.longt)     OR
+  (CUR.langt       IS DISTINCT FROM LH.langt)     OR
+  (CUR.region      IS DISTINCT FROM LH.region)    OR
+  (CUR.phone       IS DISTINCT FROM LH.phone)     OR
+  (CUR.dma         IS DISTINCT FROM LH.dma)       OR
+  (CUR.msa         IS DISTINCT FROM LH.msa)       OR
+  (CUR.countryiso2 IS DISTINCT FROM LH.countryiso2);
+
+
+
 ALTER TABLE qu.ip_history_test
 ADD COLUMN changed_fields TEXT[];
 
