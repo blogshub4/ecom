@@ -1,6 +1,52 @@
 ALTER TABLE qu.ip_history_test
 ADD COLUMN changed_fields TEXT[];
 
+
+
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    days INT,
+    limit_count INT DEFAULT 10
+)
+RETURNS TABLE (
+    country TEXT,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    change_count BIGINT,
+    most_recent_changed_fields TEXT[]
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        country,
+        start_ip_int,
+        end_ip_int,
+        COUNT(*) AS change_count,
+        ARRAY(
+            SELECT DISTINCT unnest(changed_fields)
+            FROM qu.ip_history_test sub
+            WHERE sub.start_ip_int = main.start_ip_int
+              AND sub.end_ip_int = main.end_ip_int
+              AND lower(sub.systime) >= now() - (days || ' days')::interval
+        ) AS most_recent_changed_fields
+    FROM qu.ip_history_test main
+    WHERE lower(systime) >= now() - (days || ' days')::interval
+    GROUP BY country, start_ip_int, end_ip_int
+    ORDER BY change_count DESC
+    LIMIT limit_count;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- Top 10 changed IPs in last 7 days
+SELECT * FROM quova_v7.get_top_changed_rows_with_fields(7, 10);
+
+-- Top 5 changed rows in last 15 days
+SELECT * FROM quova_v7.get_top_changed_rows_with_fields(15, 5);
+
+
+
+
+-------------\\\\\\\\\\\\\\\
 Update the sync_ip_with_history()
 
 -- 2. UPDATE changed rows
