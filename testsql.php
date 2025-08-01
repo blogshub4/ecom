@@ -1,3 +1,70 @@
+CREATE OR REPLACE FUNCTION sync_ip_with_history()
+RETURNS TRIGGER AS $$
+DECLARE
+    field_changes TEXT[];
+BEGIN
+    -- INSERT case
+    IF TG_OP = 'INSERT' THEN
+        INSERT INTO ip_history (
+            start_ip_int, end_ip_int, continent, country, country_iso2,
+            action, systime, changed_fields
+        )
+        VALUES (
+            NEW.start_ip_int, NEW.end_ip_int, NEW.continent, NEW.country, NEW.country_iso2,
+            'insert', now(), ARRAY[]::TEXT[]
+        );
+        RETURN NEW;
+
+    -- DELETE case
+    ELSIF TG_OP = 'DELETE' THEN
+        INSERT INTO ip_history (
+            start_ip_int, end_ip_int, continent, country, country_iso2,
+            action, systime, changed_fields
+        )
+        VALUES (
+            OLD.start_ip_int, OLD.end_ip_int, OLD.continent, OLD.country, OLD.country_iso2,
+            'delete', now(), ARRAY[]::TEXT[]
+        );
+        RETURN OLD;
+
+    -- UPDATE case
+    ELSIF TG_OP = 'UPDATE' THEN
+        field_changes := ARRAY[]::TEXT[];
+
+        IF NEW.continent IS DISTINCT FROM OLD.continent THEN
+            field_changes := array_append(field_changes, 'continent');
+        END IF;
+
+        IF NEW.country IS DISTINCT FROM OLD.country THEN
+            field_changes := array_append(field_changes, 'country');
+        END IF;
+
+        IF NEW.country_iso2 IS DISTINCT FROM OLD.country_iso2 THEN
+            field_changes := array_append(field_changes, 'country_iso2');
+        END IF;
+
+        -- Add all fields here as needed...
+
+        -- Only log if at least one field actually changed
+        IF array_length(field_changes, 1) > 0 THEN
+            INSERT INTO ip_history (
+                start_ip_int, end_ip_int, continent, country, country_iso2,
+                action, systime, changed_fields
+            )
+            VALUES (
+                NEW.start_ip_int, NEW.end_ip_int, NEW.continent, NEW.country, NEW.country_iso2,
+                'update', now(), field_changes
+            );
+        END IF;
+
+        RETURN NEW;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+==============================
+
 I've manually tested the sync_ip_with_history() function using controlled inserts. Here's what happens:
 
 On first insert, an INSERT action is logged for the new IP range.
