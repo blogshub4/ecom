@@ -1,6 +1,15 @@
+-- Step 1: Convert to UTC and remove timezone
 ALTER TABLE ip_history
 ALTER COLUMN systime TYPE timestamp WITHOUT time zone
 USING systime AT TIME ZONE 'UTC';
+
+-- Step 2: Truncate microseconds
+UPDATE ip_history
+SET systime = date_trunc('second', systime);
+
+I’ve updated the systime column in the ip_history table as requested. It is now stored in the format:
+
+YYYY-MM-DD HH:MM:SS
 
 
 CREATE OR REPLACE FUNCTION sync_ip_with_history()
