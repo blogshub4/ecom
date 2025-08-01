@@ -1,5 +1,24 @@
 ALTER TABLE ip_history
 ALTER COLUMN systime TYPE timestamp WITHOUT time zone
+USING date_trunc('second', systime AT TIME ZONE 'UTC');
+
+
+ALTER TABLE ip_history
+ALTER COLUMN systime TYPE timestamp WITHOUT time zone
+USING (date_trunc('second', systime AT TIME ZONE 'UTC')::timestamp without time zone);
+
+
+ALTER TABLE ip_history
+ALTER COLUMN systime TYPE timestamp WITHOUT time zone
+USING date_trunc('second', systime);
+
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_name = 'ip_history' AND column_name = 'systime';
+
+
+===ALTER TABLE ip_history
+ALTER COLUMN systime TYPE timestamp WITHOUT time zone
 USING date_trunc('second', (systime AT TIME ZONE 'UTC')::timestamp);
 
 
