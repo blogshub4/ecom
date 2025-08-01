@@ -1,3 +1,8 @@
+ALTER TABLE ip_history
+ALTER COLUMN systime TYPE timestamp WITHOUT time zone
+USING systime AT TIME ZONE 'UTC';
+
+
 CREATE OR REPLACE FUNCTION sync_ip_with_history()
 RETURNS TRIGGER AS $$
 DECLARE
