@@ -1,3 +1,55 @@
+I've manually tested the sync_ip_with_history() function using controlled inserts. Here's what happens:
+
+On first insert, an INSERT action is logged for the new IP range.
+
+If I re-insert the same IP range with updated fields (e.g., country_iso2), the trigger logs an UPDATE action, capturing only the changed fields.
+
+If the IP range no longer exists in the latest insert, the function logs a DELETE for the missing start_ip_int.
+
+This simulates how the sync logic would behave when comparing one Neustar file version to another. The logic assumes the IP range (start_ip_int, end_ip_int) is the identity key, and field changes or removal/inserts are tracked accordingly.
+
+Let me know if you’d like the raw test records or query outputs — I’ve validated it against multiple cases including new inserts, updates, and deletions.
+================
+You're absolutely right to raise this — the current trigger logic assumes that the start_ip_int and end_ip_int act as the unique identifiers for detecting changes.
+We haven't yet validated whether these ranges remain consistent across historical Neustar files. I’ll initiate a comparison of the historical records (as added by Derek to Taku-sh) to:
+
+Assess the percentage of changes per file
+
+Verify if the ranges (start_ip_int, end_ip_int) persist or shift
+Once complete, I’ll share a report with findings and recommendations (e.g., whether we should key on a different combination).
+
+❌ 2. Trigger Logic for DELETE
+Yes, the DELETE trigger is based on a diff check — i.e., if an IP range in the old data no longer exists in the latest Neustar file. That said, if start_ip_int and end_ip_int are not stable, this could indeed lead to excessive INSERT and DELETE noise.
+
+To mitigate this, we may need to:
+
+Use a checksum comparison of key fields instead of relying solely on IP ranges.
+
+Introduce a smarter diffing mechanism to avoid false positives when ranges change slightly.
+
+📅 3. Format of systime
+I’ll update the systime column formatting to YYYY-MM-DD as per your long-term integration plan with Helpdesk. Currently it's stored as a full timestamp, but we can present it as a formatted date view or store it that way directly if preferred.
+
+====
+
+As part of validating the sync_ip_with_history() trigger logic, I manually inserted records into the main IP table and confirmed the trigger correctly logs INSERT, UPDATE, and DELETE actions in the history table.
+
+To verify whether the start_ip_int and end_ip_int ranges remain consistent across Neustar file versions, I will run a historical comparison using older Neustar snapshots available in our database. This will:
+
+Highlight which IP ranges persist across versions vs. those that are added or dropped.
+
+Quantify the percentage of range changes per file.
+
+This should give a clearer picture of how stable those IP ranges are over time. If significant drift is observed, we may need to refine the logic (e.g., by comparing additional fields or using checksums).
+
+I’ll share a comparison summary once the checks are complete.
+
+
+
+
+
+-=-=---------=============================
+
 -- 2. UPDATE changed rows with changed fields tracking
 WITH latest_hist AS (
   SELECT DISTINCT ON (start_ip_int, end_ip_int)
