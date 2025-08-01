@@ -1,3 +1,8 @@
+ALTER TABLE ip_history
+ALTER COLUMN systime TYPE timestamp WITHOUT time zone
+USING date_trunc('second', systime AT TIME ZONE 'UTC');
+
+
 -- Step 1: Convert to UTC and remove timezone
 ALTER TABLE ip_history
 ALTER COLUMN systime TYPE timestamp WITHOUT time zone
