@@ -1,4 +1,111 @@
 CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
+RETURNS void AS $$
+DECLARE
+    now_ts timestamptz := now();
+BEGIN
+    -- 1. DEACTIVATE removed IPs (not present in current)
+    UPDATE quova_v7.ip_history_test hist
+    SET active = false,
+        end_date = now_ts
+    WHERE active = true
+      AND NOT EXISTS (
+          SELECT 1
+          FROM quova_v7.ip_test cur
+          WHERE cur.start_ip_int = hist.start_ip_int
+            AND cur.end_ip_int   = hist.end_ip_int
+      );
+
+    -- 2. INSERT new IP ranges
+    WITH latest_hist AS (
+        SELECT DISTINCT ON (start_ip_int, end_ip_int)
+            *
+        FROM quova_v7.ip_history_test
+        ORDER BY start_ip_int, end_ip_int, log_date DESC
+    )
+    INSERT INTO quova_v7.ip_history_test (
+        history_id,
+        start_ip_int, end_ip_int, country, country_code, city,
+        log_date, end_date, active, changed_fields
+    )
+    SELECT
+        gen_random_uuid(),
+        cur.start_ip_int,
+        cur.end_ip_int,
+        cur.country,
+        cur.country_code,
+        cur.city,
+        now_ts,
+        NULL,
+        true,
+        ARRAY['new']::text[]
+    FROM quova_v7.ip_test cur
+    LEFT JOIN latest_hist hist
+      ON cur.start_ip_int = hist.start_ip_int
+     AND cur.end_ip_int   = hist.end_ip_int
+    WHERE hist.start_ip_int IS NULL;
+
+    -- 3. INSERT changed IPs (fields updated)
+    WITH latest_hist AS (
+        SELECT DISTINCT ON (start_ip_int, end_ip_int)
+            *
+        FROM quova_v7.ip_history_test
+        WHERE active = true
+        ORDER BY start_ip_int, end_ip_int, log_date DESC
+    )
+    INSERT INTO quova_v7.ip_history_test (
+        history_id,
+        start_ip_int, end_ip_int, country, country_code, city,
+        log_date, end_date, active, changed_fields
+    )
+    SELECT
+        gen_random_uuid(),
+        cur.start_ip_int,
+        cur.end_ip_int,
+        cur.country,
+        cur.country_code,
+        cur.city,
+        now_ts,
+        NULL,
+        true,
+        ARRAY_REMOVE(ARRAY[
+            CASE WHEN cur.country      IS DISTINCT FROM hist.country THEN 'country' END,
+            CASE WHEN cur.country_code IS DISTINCT FROM hist.country_code THEN 'country_code' END,
+            CASE WHEN cur.city         IS DISTINCT FROM hist.city THEN 'city' END
+        ], NULL)
+    FROM quova_v7.ip_test cur
+    JOIN latest_hist hist
+      ON cur.start_ip_int = hist.start_ip_int
+     AND cur.end_ip_int   = hist.end_ip_int
+    WHERE
+        (cur.country      IS DISTINCT FROM hist.country OR
+         cur.country_code IS DISTINCT FROM hist.country_code OR
+         cur.city         IS DISTINCT FROM hist.city);
+
+    -- 4. DEACTIVATE previous versions of updated IPs
+    UPDATE quova_v7.ip_history_test hist
+    SET active = false,
+        end_date = now_ts
+    WHERE active = true
+      AND EXISTS (
+          SELECT 1
+          FROM quova_v7.ip_test cur
+          WHERE cur.start_ip_int = hist.start_ip_int
+            AND cur.end_ip_int   = hist.end_ip_int
+            AND (
+                cur.country      IS DISTINCT FROM hist.country OR
+                cur.country_code IS DISTINCT FROM hist.country_code OR
+                cur.city         IS DISTINCT FROM hist.city
+            )
+      );
+END;
+$$ LANGUAGE plpgsql;
+'.''''''''''''''''''''''''''''''''
+
+
+
+
+
+CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
 RETURNS void LANGUAGE plpgsql AS
 $$
 DECLARE
