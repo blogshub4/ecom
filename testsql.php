@@ -1,3 +1,107 @@
+ALTER TABLE qu.ip_history_test
+ADD COLUMN log_date DATE,
+ADD COLUMN end_date DATE,
+ADD COLUMN active BOOLEAN DEFAULT true,
+ADD COLUMN changed_fields TEXT[];  -- already present
+
+
+
+CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
+RETURNS void AS $$
+DECLARE
+    now_date DATE := CURRENT_DATE;
+BEGIN
+    -- 1. Deactivate IPs not present in current file
+    UPDATE qu.ip_history_test hist
+    SET active = false,
+        end_date = now_date
+    WHERE active = true
+      AND NOT EXISTS (
+          SELECT 1
+          FROM qu.ip_test cur
+          WHERE cur.start_ip_int = hist.start_ip_int
+            AND cur.end_ip_int   = hist.end_ip_int
+      );
+
+    -- 2. Update existing active rows if fields changed
+    UPDATE qu.ip_history_test hist
+    SET active = false,
+        end_date = now_date
+    FROM qu.ip_test cur
+    WHERE hist.active = true
+      AND cur.start_ip_int = hist.start_ip_int
+      AND cur.end_ip_int = hist.end_ip_int
+      AND (
+           cur.continent IS DISTINCT FROM hist.continent OR
+           cur.country IS DISTINCT FROM hist.country OR
+           cur.city IS DISTINCT FROM hist.city OR
+           cur.longt IS DISTINCT FROM hist.longt OR
+           cur.langt IS DISTINCT FROM hist.langt OR
+           cur.region IS DISTINCT FROM hist.region OR
+           cur.phone IS DISTINCT FROM hist.phone OR
+           cur.dma IS DISTINCT FROM hist.dma OR
+           cur.msa IS DISTINCT FROM hist.msa OR
+           cur.countryiso2 IS DISTINCT FROM hist.countryiso2
+      );
+
+    -- 3. Insert new or updated records with active=true
+    INSERT INTO qu.ip_history_test (
+        history_id, log_date, active,
+        start_ip_int, end_ip_int,
+        continent, country, city,
+        longt, langt, region, phone, dma, msa, countryiso2,
+        changed_fields
+    )
+    SELECT
+        gen_random_uuid(),
+        now_date,
+        true,
+        cur.start_ip_int, cur.end_ip_int,
+        cur.continent, cur.country, cur.city,
+        cur.longt, cur.langt, cur.region, cur.phone, cur.dma, cur.msa, cur.countryiso2,
+        ARRAY_REMOVE(ARRAY[
+            CASE WHEN hist.continent   IS DISTINCT FROM cur.continent THEN 'continent' END,
+            CASE WHEN hist.country     IS DISTINCT FROM cur.country THEN 'country' END,
+            CASE WHEN hist.city        IS DISTINCT FROM cur.city THEN 'city' END,
+            CASE WHEN hist.longt       IS DISTINCT FROM cur.longt THEN 'longt' END,
+            CASE WHEN hist.langt       IS DISTINCT FROM cur.langt THEN 'langt' END,
+            CASE WHEN hist.region      IS DISTINCT FROM cur.region THEN 'region' END,
+            CASE WHEN hist.phone       IS DISTINCT FROM cur.phone THEN 'phone' END,
+            CASE WHEN hist.dma         IS DISTINCT FROM cur.dma THEN 'dma' END,
+            CASE WHEN hist.msa         IS DISTINCT FROM cur.msa THEN 'msa' END,
+            CASE WHEN hist.countryiso2 IS DISTINCT FROM cur.countryiso2 THEN 'countryiso2' END
+        ], NULL)
+    FROM qu.ip_test cur
+    LEFT JOIN qu.ip_history_test hist
+      ON hist.start_ip_int = cur.start_ip_int
+     AND hist.end_ip_int   = cur.end_ip_int
+     AND hist.active = true
+    WHERE hist.history_id IS NULL
+       OR (
+           cur.continent   IS DISTINCT FROM hist.continent OR
+           cur.country     IS DISTINCT FROM hist.country OR
+           cur.city        IS DISTINCT FROM hist.city OR
+           cur.longt       IS DISTINCT FROM hist.longt OR
+           cur.langt       IS DISTINCT FROM hist.langt OR
+           cur.region      IS DISTINCT FROM hist.region OR
+           cur.phone       IS DISTINCT FROM hist.phone OR
+           cur.dma         IS DISTINCT FROM hist.dma OR
+           cur.msa         IS DISTINCT FROM hist.msa OR
+           cur.countryiso2 IS DISTINCT FROM hist.countryiso2
+       );
+
+END;
+$$ LANGUAGE plpgsql;
+
+
+CREATE INDEX idx_ip_history_active ON qu.ip_history_test(active);
+CREATE INDEX idx_ip_history_logdate ON qu.ip_history_test(log_date);
+CREATE INDEX idx_ip_history_range ON qu.ip_history_test(start_ip_int, end_ip_int);
+
+
+/////////////////////////////////
+
+
 ALTER TABLE quova_v7.ip_history
 ALTER COLUMN systime TYPE timestamp WITHOUT time zone
 USING date_trunc('second', lower(systime) AT TIME ZONE 'UTC');
