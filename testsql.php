@@ -1,3 +1,66 @@
+CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
+RETURNS void LANGUAGE plpgsql AS
+$$
+DECLARE
+    now_date date := CURRENT_DATE;
+BEGIN
+    -- 1. Deactivate IPs no longer in current file
+    UPDATE quova_v7.ip_history_test hist
+    SET active = false,
+        end_date = now_date
+    WHERE active = true
+      AND NOT EXISTS (
+          SELECT 1
+          FROM quova_v7.ip_test cur
+          WHERE cur.start_ip_int = hist.start_ip_int
+            AND cur.end_ip_int = hist.end_ip_int
+      );
+
+    -- 2. Insert NEW IP RANGES (not present before)
+    INSERT INTO quova_v7.ip_history_test (
+        start_ip_int, end_ip_int, country, country_code, city, log_date, end_date, active
+    )
+    SELECT
+        cur.start_ip_int,
+        cur.end_ip_int,
+        cur.country,
+        cur.country_code,
+        cur.city,
+        now_date,
+        NULL,
+        true
+    FROM quova_v7.ip_test cur
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM quova_v7.ip_history_test hist
+        WHERE hist.start_ip_int = cur.start_ip_int
+          AND hist.end_ip_int = cur.end_ip_int
+          AND hist.country = cur.country
+          AND hist.city = cur.city
+          AND hist.country_code = cur.country_code
+    );
+
+    -- 3. OPTIONAL: Update Changed Records (same IP but changed metadata)
+    -- (Uncomment if you want to track changes in country/city etc)
+    -- UPDATE quova_v7.ip_history_test hist
+    -- SET active = false,
+    --     end_date = now_date
+    -- WHERE active = true
+    --   AND EXISTS (
+    --       SELECT 1
+    --       FROM quova_v7.ip_test cur
+    --       WHERE cur.start_ip_int = hist.start_ip_int
+    --         AND cur.end_ip_int = hist.end_ip_int
+    --         AND (cur.country IS DISTINCT FROM hist.country
+    --           OR cur.city IS DISTINCT FROM hist.city
+    --           OR cur.country_code IS DISTINCT FROM hist.country_code)
+    --   );
+
+END;
+$$;
+=-=-=-=-=
+
+
 ALTER TABLE qu.ip_history_test
 ADD COLUMN log_date DATE,
 ADD COLUMN end_date DATE,
