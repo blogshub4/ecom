@@ -18,25 +18,24 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT 
-        history_id,
-        start_ip_int,
-        end_ip_int,
-        country,
-        country_code,
-        city,
-        log_date,
-        end_date,
-        active,
-        changed_fields
-    FROM quova_v7.ip_history_test
-    WHERE log_date >= now() - INTERVAL '1 day' * days_ago
-      AND changed_fields IS NOT NULL
-      AND changed_fields <> ARRAY['new']::text[]
-    ORDER BY log_date DESC
+        ip.history_id,
+        ip.start_ip_int,
+        ip.end_ip_int,
+        ip.country,
+        ip.country_code,
+        ip.city,
+        ip.log_date,
+        ip.end_date,
+        ip.active,
+        ip.changed_fields
+    FROM quova_v7.ip_history_test ip
+    WHERE ip.log_date >= now() - INTERVAL '1 day' * days_ago
+      AND ip.changed_fields IS NOT NULL
+      AND ip.changed_fields <> ARRAY['new']::text[]
+    ORDER BY ip.log_date DESC
     LIMIT result_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
-
 
 
 
