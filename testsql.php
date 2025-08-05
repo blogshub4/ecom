@@ -1,3 +1,95 @@
+
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    start_days_ago INT,
+    end_days_ago INT DEFAULT 0
+)
+RETURNS TABLE (
+    history_id BIGINT,
+    log_date TIMESTAMP,
+    country TEXT,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    change_count BIGINT,
+    most_recent_changed_fields TEXT[]
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        main.history_id,
+        main.log_date,
+        main.country,
+        main.start_ip_int,
+        main.end_ip_int,
+        COUNT(*) AS change_count,
+        ARRAY(
+            SELECT DISTINCT unnest(sub.changed_fields)
+            FROM quova_v7.ip_history_test sub
+            WHERE sub.start_ip_int = main.start_ip_int
+              AND sub.end_ip_int = main.end_ip_int
+              AND lower(sub.systime) >= now() - (start_days_ago || ' days')::interval
+              AND upper(sub.systime) <= now() - (end_days_ago || ' days')::interval
+              AND sub.changed_fields IS NOT NULL
+        ) AS most_recent_changed_fields
+    FROM quova_v7.ip_history_test main
+    WHERE lower(main.systime) >= now() - (start_days_ago || ' days')::interval
+      AND upper(main.systime) <= now() - (end_days_ago || ' days')::interval
+      AND main.changed_fields IS NOT NULL
+    GROUP BY
+        main.history_id,
+        main.log_date,
+        main.country,
+        main.start_ip_int,
+        main.end_ip_int
+    ORDER BY change_count DESC
+    LIMIT 10;
+END;
+$$ LANGUAGE plpgsql;
+
+
+          '''''''''''''''''''''''''''''''''''''''''
+
+
+          CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    start_days_ago INT,
+    end_days_ago INT DEFAULT 0
+)
+RETURNS TABLE (
+    country TEXT,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    change_count BIGINT,
+    most_recent_changed_fields TEXT[]
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        country,
+        start_ip_int,
+        end_ip_int,
+        COUNT(*) AS change_count,
+        ARRAY(
+            SELECT DISTINCT unnest(changed_fields)
+            FROM quova_v7.ip_history_test sub
+            WHERE sub.start_ip_int = main.start_ip_int
+              AND sub.end_ip_int = main.end_ip_int
+              AND lower(sub.systime) >= now() - (start_days_ago || ' days')::interval
+              AND upper(sub.systime) <= now() - (end_days_ago || ' days')::interval
+              AND sub.changed_fields IS NOT NULL
+        ) AS most_recent_changed_fields
+    FROM quova_v7.ip_history_test main
+    WHERE lower(systime) >= now() - (start_days_ago || ' days')::interval
+      AND upper(systime) <= now() - (end_days_ago || ' days')::interval
+      AND changed_fields IS NOT NULL
+    GROUP BY country, start_ip_int, end_ip_int
+    ORDER BY change_count DESC
+    LIMIT 10;
+END;
+$$ LANGUAGE plpgsql;
+
+
+........................
+
+
 CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
 RETURNS void AS $$
 DECLARE
