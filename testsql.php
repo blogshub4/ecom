@@ -1,4 +1,40 @@
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    days INT,
+    limit_count INT DEFAULT 10
+)
+RETURNS TABLE (
+    country TEXT,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    change_count BIGINT,
+    most_recent_changed_fields TEXT[]
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT
+        main.country,
+        main.start_ip_int,
+        main.end_ip_int,
+        COUNT(*) AS change_count,
+        ARRAY(
+            SELECT DISTINCT unnest(sub.changed_fields)
+            FROM quova_v7.ip_history_test sub
+            WHERE sub.start_ip_int = main.start_ip_int
+              AND sub.end_ip_int = main.end_ip_int
+              AND sub.changed_fields IS NOT NULL
+              AND lower(sub.systime) >= now() - (days || ' days')::interval
+        ) AS most_recent_changed_fields
+    FROM quova_v7.ip_history_test main
+    WHERE lower(main.systime) >= now() - (days || ' days')::interval
+      AND main.changed_fields IS NOT NULL
+    GROUP BY main.country, main.start_ip_int, main.end_ip_int
+    ORDER BY change_count DESC
+    LIMIT limit_count;
+END;
+$$ LANGUAGE plpgsql;
 
+
+]]]]]]]]]]]]]]]]]]]]]]]
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     start_days_ago INT,
     end_days_ago INT DEFAULT 0
