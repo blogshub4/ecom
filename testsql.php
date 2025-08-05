@@ -1,4 +1,46 @@
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    days_ago INTEGER DEFAULT 7,
+    result_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+    history_id UUID,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    country TEXT,
+    country_code TEXT,
+    city TEXT,
+    log_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    active BOOLEAN,
+    changed_fields TEXT[]
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        history_id,
+        start_ip_int,
+        end_ip_int,
+        country,
+        country_code,
+        city,
+        log_date,
+        end_date,
+        active,
+        changed_fields
+    FROM quova_v7.ip_history_test
+    WHERE log_date >= now() - INTERVAL '1 day' * days_ago
+      AND changed_fields IS NOT NULL
+      AND changed_fields <> ARRAY['new']::text[]
+    ORDER BY log_date DESC
+    LIMIT result_limit;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+
+
+
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     days INT,
     limit_count INT DEFAULT 10
 )
