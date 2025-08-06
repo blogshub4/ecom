@@ -37,20 +37,20 @@ BEGIN
         FROM changed_rows
     )
     SELECT
-        history_id,
-        start_ip_int,
-        end_ip_int,
-        country,
-        country_code,
-        city,
-        log_date,
-        end_date,
-        active,
-        changed_fields,
-        change_count
+        ranked_changes.history_id,
+        ranked_changes.start_ip_int,
+        ranked_changes.end_ip_int,
+        ranked_changes.country,
+        ranked_changes.country_code,
+        ranked_changes.city,
+        ranked_changes.log_date,
+        ranked_changes.end_date,
+        ranked_changes.active,
+        ranked_changes.changed_fields,
+        ranked_changes.change_count
     FROM ranked_changes
     WHERE rn = 1
-    ORDER BY log_date DESC
+    ORDER BY ranked_changes.log_date DESC
     LIMIT result_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
