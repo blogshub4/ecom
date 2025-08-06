@@ -16,14 +16,12 @@ RETURNS TABLE (
     change_count INTEGER
 )
 AS $$
-BEGIN
-    RETURN QUERY
     WITH changed_rows AS (
         SELECT *
         FROM quova_v7.ip_history_test
-        WHERE ip_history_test.log_date >= NOW() - INTERVAL '1 day' * days_ago
-          AND ip_history_test.changed_fields IS NOT NULL
-          AND ip_history_test.changed_fields <> ARRAY['new']::TEXT[]
+        WHERE log_date >= NOW() - INTERVAL '1 day' * days_ago
+          AND changed_fields IS NOT NULL
+          AND changed_fields <> ARRAY['new']::TEXT[]
     ),
     ranked_changes AS (
         SELECT *,
@@ -37,23 +35,22 @@ BEGIN
         FROM changed_rows
     )
     SELECT
-        ranked_changes.history_id,
-        ranked_changes.start_ip_int,
-        ranked_changes.end_ip_int,
-        ranked_changes.country,
-        ranked_changes.country_code,
-        ranked_changes.city,
-        ranked_changes.log_date,
-        ranked_changes.end_date,
-        ranked_changes.active,
-        ranked_changes.changed_fields,
-        ranked_changes.change_count
+        history_id,
+        start_ip_int,
+        end_ip_int,
+        country,
+        country_code,
+        city,
+        log_date,
+        end_date,
+        active,
+        changed_fields,
+        change_count
     FROM ranked_changes
     WHERE rn = 1
-    ORDER BY ranked_changes.log_date DESC
+    ORDER BY log_date DESC
     LIMIT result_limit;
-END;
-$$ LANGUAGE plpgsql STABLE;
+$$ LANGUAGE sql STABLE;
 
 
 
