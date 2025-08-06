@@ -21,7 +21,7 @@ BEGIN
     WITH changed_rows AS (
         SELECT *
         FROM quova_v7.ip_history_test
-        WHERE log_date >= now() - INTERVAL '1 day' * days_ago
+        WHERE ip_history_test.log_date >= now() - INTERVAL '1 day' * days_ago
           AND changed_fields IS NOT NULL
           AND changed_fields <> ARRAY['new']::TEXT[]
     ),
