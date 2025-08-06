@@ -12,6 +12,68 @@ RETURNS TABLE (
     log_date TIMESTAMPTZ,
     end_date TIMESTAMPTZ,
     active BOOLEAN,
+    changed_fields TEXT[],
+    change_count INTEGER
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH changed_rows AS (
+        SELECT *
+        FROM quova_v7.ip_history_test
+        WHERE log_date >= now() - INTERVAL '1 day' * days_ago
+          AND changed_fields IS NOT NULL
+          AND changed_fields <> ARRAY['new']::TEXT[]
+    ),
+    ranked_changes AS (
+        SELECT *,
+               ROW_NUMBER() OVER (PARTITION BY start_ip_int, end_ip_int ORDER BY log_date DESC) AS rn,
+               COUNT(*) OVER (PARTITION BY start_ip_int, end_ip_int) AS change_count
+        FROM changed_rows
+    )
+    SELECT
+        history_id,
+        start_ip_int,
+        end_ip_int,
+        country,
+        country_code,
+        city,
+        log_date,
+        end_date,
+        active,
+        changed_fields,
+        change_count
+    FROM ranked_changes
+    WHERE rn = 1
+    ORDER BY log_date DESC
+    LIMIT result_limit;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+
+
+
+
+
+
+
+
+
+
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    days_ago INTEGER DEFAULT 7,
+    result_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+    history_id UUID,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    country TEXT,
+    country_code TEXT,
+    city TEXT,
+    log_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    active BOOLEAN,
     changed_fields TEXT[]
 )
 AS $$
