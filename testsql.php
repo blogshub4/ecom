@@ -63,7 +63,6 @@ $$ LANGUAGE plpgsql STABLE;
 
 
 
-
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     days_ago INTEGER DEFAULT 7,
     result_limit INTEGER DEFAULT 10
