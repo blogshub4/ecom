@@ -3,7 +3,7 @@ RETURNS TABLE (
     history_id UUID,
     start_ip_int BIGINT,
     end_ip_int BIGINT,
-    changed_fields TEXT,
+    changed_fields TEXT[],
     change_count INT,
     country TEXT,
     city TEXT,
@@ -18,7 +18,7 @@ BEGIN
         active_row.start_ip_int,
         active_row.end_ip_int,
         active_row.changed_fields,
-        COALESCE(change_counter.change_count, 0) AS change_count,
+        COALESCE(change_counter.total_changes, 0) AS change_count,
         active_row.country,
         active_row.city,
         active_row.log_date,
@@ -29,60 +29,28 @@ BEGIN
         SELECT
             start_ip_int,
             end_ip_int,
-            changed_fields,
-            COUNT(*) AS change_count
+            COUNT(*) AS total_changes
         FROM
             quova_v7.ip_history_test
         WHERE
-            changed_fields IS NOT NULL
-            AND active = false
+            active = false
+            AND array_length(changed_fields, 1) > 0
         GROUP BY
             start_ip_int,
-            end_ip_int,
-            changed_fields
+            end_ip_int
     ) AS change_counter
     ON
         active_row.start_ip_int = change_counter.start_ip_int
         AND active_row.end_ip_int = change_counter.end_ip_int
-        AND active_row.changed_fields = change_counter.changed_fields
     WHERE
         active_row.active = true;
 END;
 $$ LANGUAGE plpgsql;
 
 
-===
-CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields()
-RETURNS TABLE (
-  history_id UUID,
-  start_ip_int BIGINT,
-  end_ip_int BIGINT,
-  changed_fields TEXT,
-  change_count INTEGER,
-  country TEXT,
-  city TEXT,
-  log_date TIMESTAMP,
-  end_date TIMESTAMP
-) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT 
-    h.history_id,
-    h.start_ip_int,
-    h.end_ip_int,
-    h.changed_fields,
-    -- Count the number of changed fields from comma-separated text
-    array_length(string_to_array(h.changed_fields, ','), 1) AS change_count,
-    h.country,
-    h.city,
-    h.log_date,
-    h.end_date
-  FROM quova_v7.ip_history_test h
-  WHERE h.changed_fields IS NOT NULL
-  ORDER BY log_date DESC;
-END;
-$$ LANGUAGE plpgsql;
 
+
+===
 
 working fine//////////////
 CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
