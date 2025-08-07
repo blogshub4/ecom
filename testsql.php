@@ -1,3 +1,12 @@
+SELECT *
+FROM quova_v7.ip_test i
+JOIN quova_v7.ip_history_test h
+  ON i.start_ip_int = h.start_ip_int
+ AND i.end_ip_int = h.end_ip_int
+ AND i.country = h.country;
+
+
+
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     days_ago INTEGER DEFAULT 7,
     result_limit INTEGER DEFAULT 10
