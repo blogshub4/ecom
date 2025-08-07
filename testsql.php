@@ -10,8 +10,8 @@ RETURNS TABLE (
     change_count INTEGER,
     country TEXT,
     city TEXT,
-    log_date TIMESTAMP,
-    end_date TIMESTAMP,
+    log_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
     active BOOLEAN
 )
 AS $$
@@ -36,6 +36,7 @@ BEGIN
     LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
 
 
 
