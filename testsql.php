@@ -29,32 +29,34 @@ BEGIN
         latest.end_date,
         latest.active
     FROM (
-        -- aggregate changes per IP range in last N days
+        -- Step 1: Aggregate distinct changed fields per IP range
         SELECT 
-            start_ip_int,
-            end_ip_int,
-            array_agg(DISTINCT unnest(changed_fields)) AS changed_fields
-        FROM quova_v7.ip_history_test
+            h1.start_ip_int,
+            h1.end_ip_int,
+            array_agg(DISTINCT unnest(h1.changed_fields)) AS changed_fields
+        FROM quova_v7.ip_history_test h1
         WHERE 
-            log_date >= NOW() - INTERVAL '1 day' * p_days
-            AND cardinality(changed_fields) > 0
-        GROUP BY start_ip_int, end_ip_int
+            h1.log_date >= NOW() - INTERVAL '1 day' * p_days
+            AND cardinality(h1.changed_fields) > 0
+        GROUP BY h1.start_ip_int, h1.end_ip_int
     ) AS agg
     JOIN LATERAL (
-        -- get the latest active record per IP range
+        -- Step 2: Get the latest active record for each IP range
         SELECT *
-        FROM quova_v7.ip_history_test h
+        FROM quova_v7.ip_history_test h2
         WHERE 
-            h.start_ip_int = agg.start_ip_int
-            AND h.end_ip_int = agg.end_ip_int
-            AND h.active = true
-        ORDER BY h.log_date DESC
+            h2.start_ip_int = agg.start_ip_int
+            AND h2.end_ip_int = agg.end_ip_int
+            AND h2.active = true
+        ORDER BY h2.log_date DESC
         LIMIT 1
     ) AS latest ON TRUE
-    ORDER BY change_count DESC, latest.log_date DESC
+    ORDER BY cardinality(agg.changed_fields) DESC, latest.log_date DESC
     LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+
 
 ]]
 
