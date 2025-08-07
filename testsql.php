@@ -17,44 +17,57 @@ RETURNS TABLE (
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        latest.history_id,
-        latest.start_ip_int,
-        latest.end_ip_int,
-        agg.changed_fields,
-        cardinality(agg.changed_fields) AS change_count,
-        latest.country,
-        latest.city,
-        latest.log_date,
-        latest.end_date,
-        latest.active
-    FROM (
-        -- Step 1: Aggregate distinct changed fields per IP range
+    WITH unnested_changes AS (
         SELECT 
-            h1.start_ip_int,
-            h1.end_ip_int,
-            array_agg(DISTINCT unnest(h1.changed_fields)) AS changed_fields
-        FROM quova_v7.ip_history_test h1
+            h.start_ip_int,
+            h.end_ip_int,
+            unnest(h.changed_fields) AS field
+        FROM quova_v7.ip_history_test h
         WHERE 
-            h1.log_date >= NOW() - INTERVAL '1 day' * p_days
-            AND cardinality(h1.changed_fields) > 0
-        GROUP BY h1.start_ip_int, h1.end_ip_int
-    ) AS agg
-    JOIN LATERAL (
-        -- Step 2: Get the latest active record for each IP range
-        SELECT *
+            h.log_date >= NOW() - INTERVAL '1 day' * p_days
+            AND cardinality(h.changed_fields) > 0
+    ),
+    aggregated_changes AS (
+        SELECT 
+            start_ip_int,
+            end_ip_int,
+            array_agg(DISTINCT field) AS changed_fields
+        FROM unnested_changes
+        GROUP BY start_ip_int, end_ip_int
+    ),
+    latest_active AS (
+        SELECT DISTINCT ON (h2.start_ip_int, h2.end_ip_int)
+            h2.*
         FROM quova_v7.ip_history_test h2
-        WHERE 
-            h2.start_ip_int = agg.start_ip_int
-            AND h2.end_ip_int = agg.end_ip_int
-            AND h2.active = true
-        ORDER BY h2.log_date DESC
-        LIMIT 1
-    ) AS latest ON TRUE
-    ORDER BY cardinality(agg.changed_fields) DESC, latest.log_date DESC
+        WHERE h2.active = true
+        ORDER BY h2.start_ip_int, h2.end_ip_int, h2.log_date DESC
+    )
+    SELECT 
+        la.history_id,
+        la.start_ip_int,
+        la.end_ip_int,
+        ac.changed_fields,
+        cardinality(ac.changed_fields) AS change_count,
+        la.country,
+        la.city,
+        la.log_date,
+        la.end_date,
+        la.active
+    FROM aggregated_changes ac
+    JOIN latest_active la
+        ON la.start_ip_int = ac.start_ip_int AND la.end_ip_int = ac.end_ip_int
+    ORDER BY cardinality(ac.changed_fields) DESC, la.log_date DESC
     LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+
+
+
+
+
+
+
 
 
 
