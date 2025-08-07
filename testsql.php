@@ -1,6 +1,85 @@
 CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
 RETURNS void AS $$
 BEGIN
+  -- 1. Insert new IPs not present in history
+  INSERT INTO quova_v7.ip_history_test (
+    history_id, start_ip_int, end_ip_int, country, country_cf, city,
+    log_date, active, changed_fields, change_count
+  )
+  SELECT 
+    gen_random_uuid(), i.start_ip_int, i.end_ip_int, i.country, i.country_cf, i.city,
+    NOW(), TRUE, NULL, 0
+  FROM quova_v7.ip_test i
+  LEFT JOIN quova_v7.ip_history_test h
+    ON i.start_ip_int = h.start_ip_int
+   AND i.end_ip_int = h.end_ip_int
+  WHERE h.start_ip_int IS NULL;
+
+  -- 2. Insert new version if fields changed
+  INSERT INTO quova_v7.ip_history_test (
+    history_id, start_ip_int, end_ip_int, country, country_cf, city,
+    log_date, active, changed_fields, change_count
+  )
+  SELECT 
+    gen_random_uuid(), i.start_ip_int, i.end_ip_int, i.country, i.country_cf, i.city,
+    NOW(), TRUE,
+    TRIM(BOTH ',' FROM 
+      CONCAT(
+        CASE WHEN i.country IS DISTINCT FROM h.country THEN 'country,' ELSE '' END,
+        CASE WHEN i.country_cf IS DISTINCT FROM h.country_cf THEN 'country_cf,' ELSE '' END,
+        CASE WHEN i.city IS DISTINCT FROM h.city THEN 'city,' ELSE '' END
+      )
+    ) AS changed_fields,
+    (CASE WHEN i.country IS DISTINCT FROM h.country THEN 1 ELSE 0 END +
+     CASE WHEN i.country_cf IS DISTINCT FROM h.country_cf THEN 1 ELSE 0 END +
+     CASE WHEN i.city IS DISTINCT FROM h.city THEN 1 ELSE 0 END) AS change_count
+  FROM quova_v7.ip_test i
+  JOIN quova_v7.ip_history_test h
+    ON i.start_ip_int = h.start_ip_int
+   AND i.end_ip_int = h.end_ip_int
+  WHERE h.active = TRUE
+    AND (
+      i.country IS DISTINCT FROM h.country OR
+      i.country_cf IS DISTINCT FROM h.country_cf OR
+      i.city IS DISTINCT FROM h.city
+    );
+
+  -- 3. Deactivate all previous versions (same IP) if new version added
+  UPDATE quova_v7.ip_history_test h
+  SET active = FALSE,
+      end_date = NOW()
+  WHERE h.active = TRUE
+    AND EXISTS (
+      SELECT 1
+      FROM quova_v7.ip_test i
+      WHERE i.start_ip_int = h.start_ip_int
+        AND i.end_ip_int = h.end_ip_int
+        AND (
+          i.country IS DISTINCT FROM h.country OR
+          i.country_cf IS DISTINCT FROM h.country_cf OR
+          i.city IS DISTINCT FROM h.city
+        )
+    );
+
+  -- 4. Deactivate if IP no longer exists in ip_test
+  UPDATE quova_v7.ip_history_test h
+  SET active = FALSE,
+      end_date = NOW()
+  WHERE h.active = TRUE
+    AND NOT EXISTS (
+      SELECT 1 FROM quova_v7.ip_test i
+      WHERE i.start_ip_int = h.start_ip_int
+        AND i.end_ip_int = h.end_ip_int
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
+RETURNS void AS $$
+BEGIN
   -- 1. Insert new IP ranges not present in history
   INSERT INTO quova_v7.ip_history_test (
     start_ip_int, end_ip_int, country, country_code, city,
