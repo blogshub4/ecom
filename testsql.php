@@ -34,7 +34,8 @@ BEGIN
         SELECT 
             ef.start_ip_int,
             ef.end_ip_int,
-            array_agg(DISTINCT ef.field) AS all_changed_fields
+            array_agg(DISTINCT ef.field) AS all_changed_fields,
+            COUNT(DISTINCT ef.field) AS total_changes
         FROM exploded_fields ef
         GROUP BY ef.start_ip_int, ef.end_ip_int
     ),
@@ -43,7 +44,7 @@ BEGIN
             h.start_ip_int,
             h.end_ip_int,
             ac.all_changed_fields AS changed_fields,
-            cardinality(ac.all_changed_fields) AS change_count,
+            ac.total_changes AS change_count,
             h.country,
             h.city,
             h.log_date,
@@ -54,6 +55,7 @@ BEGIN
           ON h.start_ip_int = ac.start_ip_int
          AND h.end_ip_int = ac.end_ip_int
         WHERE h.active = TRUE
+          AND h.log_date >= NOW() - INTERVAL '1 day' * p_days
         ORDER BY h.start_ip_int, h.end_ip_int, h.log_date DESC
     )
     SELECT *
