@@ -13,37 +13,33 @@ RETURNS TABLE (
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT
-        active_row.history_id,
-        active_row.start_ip_int,
-        active_row.end_ip_int,
-        active_row.changed_fields,
-        COALESCE(change_counter.total_changes, 0) AS change_count,
-        active_row.country,
-        active_row.city,
-        active_row.log_date,
-        active_row.end_date
-    FROM
-        quova_v7.ip_history_test active_row
-    LEFT JOIN (
+    WITH active_rows AS (
+        SELECT *
+        FROM quova_v7.ip_history_test
+        WHERE active = true
+    ),
+    change_counts AS (
         SELECT
             start_ip_int,
             end_ip_int,
             COUNT(*) AS total_changes
-        FROM
-            quova_v7.ip_history_test
-        WHERE
-            active = false
-            AND array_length(changed_fields, 1) > 0
-        GROUP BY
-            start_ip_int,
-            end_ip_int
-    ) AS change_counter
-    ON
-        active_row.start_ip_int = change_counter.start_ip_int
-        AND active_row.end_ip_int = change_counter.end_ip_int
-    WHERE
-        active_row.active = true;
+        FROM quova_v7.ip_history_test
+        WHERE active = false AND array_length(changed_fields, 1) > 0
+        GROUP BY start_ip_int, end_ip_int
+    )
+    SELECT
+        a.history_id,
+        a.start_ip_int,
+        a.end_ip_int,
+        a.changed_fields,
+        COALESCE(cc.total_changes, 0) AS change_count,
+        a.country,
+        a.city,
+        a.log_date,
+        a.end_date
+    FROM active_rows a
+    LEFT JOIN change_counts cc
+        ON a.start_ip_int = cc.start_ip_int AND a.end_ip_int = cc.end_ip_int;
 END;
 $$ LANGUAGE plpgsql;
 
