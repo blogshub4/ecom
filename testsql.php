@@ -18,18 +18,18 @@ BEGIN
     RETURN QUERY
     WITH history_window AS (
         SELECT *
-        FROM quova_v7.ip_history_test
-        WHERE log_date >= NOW() - INTERVAL '1 day' * p_days
-          AND changed_fields IS NOT NULL
-          AND cardinality(changed_fields) > 0
+        FROM quova_v7.ip_history_test h2
+        WHERE h2.log_date >= NOW() - INTERVAL '1 day' * p_days
+          AND h2.changed_fields IS NOT NULL
+          AND cardinality(h2.changed_fields) > 0
     ),
     aggregated_changes AS (
         SELECT
-            start_ip_int,
-            end_ip_int,
-            array_agg(DISTINCT unnest(changed_fields)) AS all_changed_fields
-        FROM history_window
-        GROUP BY start_ip_int, end_ip_int
+            h2.start_ip_int,
+            h2.end_ip_int,
+            array_agg(DISTINCT unnest(h2.changed_fields)) AS all_changed_fields
+        FROM history_window h2
+        GROUP BY h2.start_ip_int, h2.end_ip_int
     ),
     latest_active AS (
         SELECT DISTINCT ON (h.start_ip_int, h.end_ip_int)
@@ -43,9 +43,9 @@ BEGIN
             h.end_date,
             h.active
         FROM quova_v7.ip_history_test h
-        JOIN aggregated_changes ac ON
-            h.start_ip_int = ac.start_ip_int AND
-            h.end_ip_int = ac.end_ip_int
+        JOIN aggregated_changes ac
+          ON h.start_ip_int = ac.start_ip_int
+         AND h.end_ip_int = ac.end_ip_int
         WHERE h.active = TRUE
         ORDER BY h.start_ip_int, h.end_ip_int, h.log_date DESC
     )
