@@ -17,46 +17,32 @@ RETURNS TABLE (
 AS $$
 BEGIN
     RETURN QUERY
-    WITH unnested_changes AS (
-        SELECT 
-            h.start_ip_int,
-            h.end_ip_int,
-            unnest(h.changed_fields) AS field
-        FROM quova_v7.ip_history_test h
+    WITH ranked_history AS (
+        SELECT *,
+               ROW_NUMBER() OVER (
+                   PARTITION BY start_ip_int, end_ip_int
+                   ORDER BY log_date DESC
+               ) AS rn
+        FROM quova_v7.ip_history_test
         WHERE 
-            h.log_date >= NOW() - INTERVAL '1 day' * p_days
-            AND cardinality(h.changed_fields) > 0
-    ),
-    aggregated_changes AS (
-        SELECT 
-            uc.start_ip_int,
-            uc.end_ip_int,
-            array_agg(DISTINCT uc.field) AS changed_fields
-        FROM unnested_changes uc
-        GROUP BY uc.start_ip_int, uc.end_ip_int
-    ),
-    latest_active AS (
-        SELECT DISTINCT ON (h2.start_ip_int, h2.end_ip_int)
-            h2.*
-        FROM quova_v7.ip_history_test h2
-        WHERE h2.active = true
-        ORDER BY h2.start_ip_int, h2.end_ip_int, h2.log_date DESC
+            log_date >= NOW() - INTERVAL '1 day' * p_days
+            AND changed_fields IS NOT NULL
+            AND cardinality(changed_fields) > 0
     )
     SELECT 
-        la.history_id,
-        la.start_ip_int,
-        la.end_ip_int,
-        ac.changed_fields,
-        cardinality(ac.changed_fields) AS change_count,
-        la.country,
-        la.city,
-        la.log_date,
-        la.end_date,
-        la.active
-    FROM aggregated_changes ac
-    JOIN latest_active la
-        ON la.start_ip_int = ac.start_ip_int AND la.end_ip_int = ac.end_ip_int
-    ORDER BY cardinality(ac.changed_fields) DESC, la.log_date DESC
+        h.history_id,
+        h.start_ip_int,
+        h.end_ip_int,
+        h.changed_fields,
+        cardinality(h.changed_fields) AS change_count,
+        h.country::TEXT,
+        h.city::TEXT,
+        h.log_date::TIMESTAMPTZ,
+        h.end_date::TIMESTAMPTZ,
+        h.active
+    FROM ranked_history h
+    WHERE h.rn = 1
+    ORDER BY change_count DESC, log_date DESC
     LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
