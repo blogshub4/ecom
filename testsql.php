@@ -13,6 +13,51 @@ RETURNS TABLE (
 AS $$
 BEGIN
     RETURN QUERY
+    WITH latest_active AS (
+        SELECT *
+        FROM quova_v7.ip_history_test
+        WHERE active = true
+    ),
+    change_counts AS (
+        SELECT start_ip_int, end_ip_int, COUNT(*) AS change_count
+        FROM quova_v7.ip_history_test
+        WHERE active = false AND array_length(changed_fields, 1) > 0
+        GROUP BY start_ip_int, end_ip_int
+    )
+    SELECT
+        la.history_id,
+        la.start_ip_int,
+        la.end_ip_int,
+        la.changed_fields,
+        COALESCE(cc.change_count, 0),
+        la.country,
+        la.city,
+        la.log_date,
+        la.end_date
+    FROM latest_active la
+    LEFT JOIN change_counts cc
+    ON la.start_ip_int = cc.start_ip_int AND la.end_ip_int = cc.end_ip_int;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields()
+RETURNS TABLE (
+    history_id UUID,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    changed_fields TEXT[],
+    change_count INT,
+    country TEXT,
+    city TEXT,
+    log_date TIMESTAMP,
+    end_date TIMESTAMP
+)
+AS $$
+BEGIN
+    RETURN QUERY
     WITH active_rows AS (
         SELECT *
         FROM quova_v7.ip_history_test
