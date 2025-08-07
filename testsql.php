@@ -1,3 +1,36 @@
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields()
+RETURNS TABLE (
+  history_id UUID,
+  start_ip_int BIGINT,
+  end_ip_int BIGINT,
+  changed_fields TEXT,
+  change_count INTEGER,
+  country TEXT,
+  city TEXT,
+  log_date TIMESTAMP,
+  end_date TIMESTAMP
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT 
+    h.history_id,
+    h.start_ip_int,
+    h.end_ip_int,
+    h.changed_fields,
+    -- Count the number of changed fields from comma-separated text
+    array_length(string_to_array(h.changed_fields, ','), 1) AS change_count,
+    h.country,
+    h.city,
+    h.log_date,
+    h.end_date
+  FROM quova_v7.ip_history_test h
+  WHERE h.changed_fields IS NOT NULL
+  ORDER BY log_date DESC;
+END;
+$$ LANGUAGE plpgsql;
+
+
+working fine//////////////
 CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
 RETURNS void AS $$
 BEGIN
