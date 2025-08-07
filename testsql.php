@@ -18,6 +18,66 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT 
+        latest.history_id,
+        latest.start_ip_int,
+        latest.end_ip_int,
+        agg.changed_fields,
+        cardinality(agg.changed_fields) AS change_count,
+        latest.country,
+        latest.city,
+        latest.log_date,
+        latest.end_date,
+        latest.active
+    FROM (
+        -- aggregate changes per IP range in last N days
+        SELECT 
+            start_ip_int,
+            end_ip_int,
+            array_agg(DISTINCT unnest(changed_fields)) AS changed_fields
+        FROM quova_v7.ip_history_test
+        WHERE 
+            log_date >= NOW() - INTERVAL '1 day' * p_days
+            AND cardinality(changed_fields) > 0
+        GROUP BY start_ip_int, end_ip_int
+    ) AS agg
+    JOIN LATERAL (
+        -- get the latest active record per IP range
+        SELECT *
+        FROM quova_v7.ip_history_test h
+        WHERE 
+            h.start_ip_int = agg.start_ip_int
+            AND h.end_ip_int = agg.end_ip_int
+            AND h.active = true
+        ORDER BY h.log_date DESC
+        LIMIT 1
+    ) AS latest ON TRUE
+    ORDER BY change_count DESC, latest.log_date DESC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+]]
+
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    p_days INTEGER DEFAULT 7,
+    p_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+    history_id UUID,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    changed_fields TEXT[],
+    change_count INTEGER,
+    country TEXT,
+    city TEXT,
+    log_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    active BOOLEAN
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
         h.history_id,
         h.start_ip_int,
         h.end_ip_int,
