@@ -70,7 +70,6 @@ $$ LANGUAGE plpgsql STABLE;
 
 
 
-
 ]]
 
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
