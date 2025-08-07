@@ -27,7 +27,10 @@ BEGIN
         SELECT
             h2.start_ip_int,
             h2.end_ip_int,
-            array_agg(DISTINCT unnest(h2.changed_fields)) AS all_changed_fields
+            (
+              SELECT array_agg(DISTINCT val)
+              FROM unnest(h2.changed_fields) AS val
+            ) AS all_changed_fields
         FROM history_window h2
         GROUP BY h2.start_ip_int, h2.end_ip_int
     ),
