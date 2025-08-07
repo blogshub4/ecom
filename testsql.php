@@ -20,14 +20,14 @@ BEGIN
     WITH ranked_history AS (
         SELECT *,
                ROW_NUMBER() OVER (
-                   PARTITION BY start_ip_int, end_ip_int
-                   ORDER BY log_date DESC
+                   PARTITION BY h.start_ip_int, h.end_ip_int
+                   ORDER BY h.log_date DESC
                ) AS rn
-        FROM quova_v7.ip_history_test
+        FROM quova_v7.ip_history_test h
         WHERE 
-            log_date >= NOW() - INTERVAL '1 day' * p_days
-            AND changed_fields IS NOT NULL
-            AND cardinality(changed_fields) > 0
+            h.log_date >= NOW() - INTERVAL '1 day' * p_days
+            AND h.changed_fields IS NOT NULL
+            AND cardinality(h.changed_fields) > 0
     )
     SELECT 
         h.history_id,
@@ -42,12 +42,10 @@ BEGIN
         h.active
     FROM ranked_history h
     WHERE h.rn = 1
-    ORDER BY change_count DESC, log_date DESC
+    ORDER BY change_count DESC, h.log_date DESC
     LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
-
-
 
 
 
