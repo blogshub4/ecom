@@ -29,11 +29,11 @@ BEGIN
     ),
     aggregated_changes AS (
         SELECT 
-            start_ip_int,
-            end_ip_int,
-            array_agg(DISTINCT field) AS changed_fields
-        FROM unnested_changes
-        GROUP BY start_ip_int, end_ip_int
+            uc.start_ip_int,
+            uc.end_ip_int,
+            array_agg(DISTINCT uc.field) AS changed_fields
+        FROM unnested_changes uc
+        GROUP BY uc.start_ip_int, uc.end_ip_int
     ),
     latest_active AS (
         SELECT DISTINCT ON (h2.start_ip_int, h2.end_ip_int)
