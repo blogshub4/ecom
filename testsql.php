@@ -18,10 +18,10 @@ BEGIN
     RETURN QUERY
     WITH history_window AS (
         SELECT *
-        FROM quova_v7.ip_history_test
-        WHERE log_date >= NOW() - INTERVAL '1 day' * p_days
-          AND changed_fields IS NOT NULL
-          AND cardinality(changed_fields) > 0
+        FROM quova_v7.ip_history_test h
+        WHERE h.log_date >= NOW() - INTERVAL '1 day' * p_days
+          AND h.changed_fields IS NOT NULL
+          AND cardinality(h.changed_fields) > 0
     ),
     exploded_fields AS (
         SELECT 
