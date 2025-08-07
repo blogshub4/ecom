@@ -18,21 +18,25 @@ BEGIN
     RETURN QUERY
     WITH history_window AS (
         SELECT *
-        FROM quova_v7.ip_history_test h2
-        WHERE h2.log_date >= NOW() - INTERVAL '1 day' * p_days
-          AND h2.changed_fields IS NOT NULL
-          AND cardinality(h2.changed_fields) > 0
+        FROM quova_v7.ip_history_test
+        WHERE log_date >= NOW() - INTERVAL '1 day' * p_days
+          AND changed_fields IS NOT NULL
+          AND cardinality(changed_fields) > 0
+    ),
+    exploded_fields AS (
+        SELECT 
+            h.start_ip_int,
+            h.end_ip_int,
+            unnest(h.changed_fields) AS field
+        FROM history_window h
     ),
     aggregated_changes AS (
-        SELECT
-            h2.start_ip_int,
-            h2.end_ip_int,
-            (
-              SELECT array_agg(DISTINCT val)
-              FROM unnest(h2.changed_fields) AS val
-            ) AS all_changed_fields
-        FROM history_window h2
-        GROUP BY h2.start_ip_int, h2.end_ip_int
+        SELECT 
+            ef.start_ip_int,
+            ef.end_ip_int,
+            array_agg(DISTINCT ef.field) AS all_changed_fields
+        FROM exploded_fields ef
+        GROUP BY ef.start_ip_int, ef.end_ip_int
     ),
     latest_active AS (
         SELECT DISTINCT ON (h.start_ip_int, h.end_ip_int)
@@ -58,6 +62,9 @@ BEGIN
     LIMIT p_limit;
 END;
 $$ LANGUAGE plpgsql STABLE;
+
+
+
 
 
 
