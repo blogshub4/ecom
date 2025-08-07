@@ -35,7 +35,7 @@ BEGIN
             ef.start_ip_int,
             ef.end_ip_int,
             array_agg(DISTINCT ef.field) AS all_changed_fields,
-            COUNT(DISTINCT ef.field) AS total_changes
+            COUNT(DISTINCT ef.field)::INTEGER AS total_changes
         FROM exploded_fields ef
         GROUP BY ef.start_ip_int, ef.end_ip_int
     ),
