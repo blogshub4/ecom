@@ -1,6 +1,72 @@
 CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
 RETURNS void AS $$
 BEGIN
+  -- Step 1: Insert records that never existed (first-time ranges)
+  INSERT INTO quova_v7.ip_history_test (
+    history_id, start_ip_int, end_ip_int, continent, country, country_iso2,
+    log_date, active, changed_fields
+  )
+  SELECT 
+    gen_random_uuid(), i.start_ip_int, i.end_ip_int, i.continent, i.country, i.country_iso2,
+    NOW(), TRUE, ARRAY[]::TEXT[]
+  FROM quova_v7.ip_test i
+  LEFT JOIN quova_v7.ip_history_test h
+    ON i.start_ip_int = h.start_ip_int
+  WHERE h.start_ip_int IS NULL;
+
+  -- Step 2: Insert updated versions (if fields changed)
+  INSERT INTO quova_v7.ip_history_test (
+    history_id, start_ip_int, end_ip_int, continent, country, country_iso2,
+    log_date, active, changed_fields
+  )
+  SELECT 
+    gen_random_uuid(), i.start_ip_int, i.end_ip_int, i.continent, i.country, i.country_iso2,
+    NOW(), TRUE,
+    ARRAY_REMOVE(ARRAY[
+      CASE WHEN i.end_ip_int IS DISTINCT FROM h.end_ip_int THEN 'end_ip_int' ELSE NULL END,
+      CASE WHEN i.continent IS DISTINCT FROM h.continent THEN 'continent' ELSE NULL END,
+      CASE WHEN i.country IS DISTINCT FROM h.country THEN 'country' ELSE NULL END,
+      CASE WHEN i.country_iso2 IS DISTINCT FROM h.country_iso2 THEN 'country_iso2' ELSE NULL END
+    ], NULL)::TEXT[]
+  FROM quova_v7.ip_test i
+  JOIN quova_v7.ip_history_test h
+    ON i.start_ip_int = h.start_ip_int
+  WHERE h.active = TRUE
+    AND (
+      i.end_ip_int IS DISTINCT FROM h.end_ip_int OR
+      i.continent IS DISTINCT FROM h.continent OR
+      i.country IS DISTINCT FROM h.country OR
+      i.country_iso2 IS DISTINCT FROM h.country_iso2
+    );
+
+  -- Step 3: Deactivate old versions
+  UPDATE quova_v7.ip_history_test h
+  SET active = FALSE,
+      end_date = NOW()
+  WHERE h.active = TRUE
+    AND EXISTS (
+      SELECT 1
+      FROM quova_v7.ip_test i
+      WHERE i.start_ip_int = h.start_ip_int
+        AND (
+          i.end_ip_int IS DISTINCT FROM h.end_ip_int OR
+          i.continent IS DISTINCT FROM h.continent OR
+          i.country IS DISTINCT FROM h.country OR
+          i.country_iso2 IS DISTINCT FROM h.country_iso2
+        )
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+\\\\\\\\\\\\\\\\\\\\\\\\\\
+
+CREATE OR REPLACE FUNCTION quova_v7.sync_ip_with_history()
+RETURNS void AS $$
+BEGIN
   -- 1. Insert brand new IP ranges (not seen before)
   INSERT INTO quova_v7.ip_history_test (
     history_id, start_ip_int, end_ip_int, country, country_cf, city,
