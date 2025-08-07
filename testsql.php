@@ -1,3 +1,4 @@
+//working filter
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     p_days INTEGER DEFAULT 7,
     p_limit INTEGER DEFAULT 10
