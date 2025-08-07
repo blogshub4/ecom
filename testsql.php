@@ -3,6 +3,66 @@ CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     p_limit INTEGER DEFAULT 10
 )
 RETURNS TABLE (
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    changed_fields TEXT[],
+    change_count INTEGER,
+    country TEXT,
+    city TEXT,
+    log_date TIMESTAMPTZ,
+    end_date TIMESTAMPTZ,
+    active BOOLEAN
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    WITH history_window AS (
+        SELECT *
+        FROM quova_v7.ip_history_test
+        WHERE log_date >= NOW() - INTERVAL '1 day' * p_days
+          AND changed_fields IS NOT NULL
+          AND cardinality(changed_fields) > 0
+    ),
+    aggregated_changes AS (
+        SELECT
+            start_ip_int,
+            end_ip_int,
+            array_agg(DISTINCT unnest(changed_fields)) AS all_changed_fields
+        FROM history_window
+        GROUP BY start_ip_int, end_ip_int
+    ),
+    latest_active AS (
+        SELECT DISTINCT ON (h.start_ip_int, h.end_ip_int)
+            h.start_ip_int,
+            h.end_ip_int,
+            ac.all_changed_fields AS changed_fields,
+            cardinality(ac.all_changed_fields) AS change_count,
+            h.country,
+            h.city,
+            h.log_date,
+            h.end_date,
+            h.active
+        FROM quova_v7.ip_history_test h
+        JOIN aggregated_changes ac ON
+            h.start_ip_int = ac.start_ip_int AND
+            h.end_ip_int = ac.end_ip_int
+        WHERE h.active = TRUE
+        ORDER BY h.start_ip_int, h.end_ip_int, h.log_date DESC
+    )
+    SELECT *
+    FROM latest_active
+    ORDER BY change_count DESC, log_date DESC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+
+
+CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
+    p_days INTEGER DEFAULT 7,
+    p_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
     history_id UUID,
     start_ip_int BIGINT,
     end_ip_int BIGINT,
