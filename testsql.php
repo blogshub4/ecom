@@ -1,3 +1,9 @@
+ALTER TABLE qu.ip_history_test
+ADD COLUMN log_date DATE,
+ADD COLUMN end_date DATE,
+ADD COLUMN active BOOLEAN DEFAULT true,
+
+
 //working filter
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     p_days INTEGER DEFAULT 7,
