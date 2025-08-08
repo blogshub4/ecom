@@ -1,3 +1,13 @@
+This function returns the top IP ranges from the ip_history_test table that have experienced the most field-level changes (like country, city, etc.) within a specified time window (p_days). It aggregates all field changes across the history and reports:
+
+changed_fields: list of unique fields that changed
+
+change_count: total number of field changes during the period
+
+Includes latest active record details for each IP range
+
+It helps identify frequently updated or unstable IP data.
+
 ALTER TABLE qu.ip_history_test
 ADD COLUMN log_date DATE,
 ADD COLUMN end_date DATE,
