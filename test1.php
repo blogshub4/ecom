@@ -1,3 +1,51 @@
+-- 1️⃣ Make sure pg_partman extension is available
+CREATE EXTENSION IF NOT EXISTS pg_partman;
+
+-- 2️⃣ Backup the existing table
+CREATE TABLE IF NOT EXISTS quova_v7.ip_history_test_backup AS
+SELECT * FROM quova_v7.ip_history_test;
+
+-- 3️⃣ Rename old table
+ALTER TABLE quova_v7.ip_history_test RENAME TO ip_history_test_old;
+
+-- 4️⃣ Create new partitioned parent table
+CREATE TABLE quova_v7.ip_history_test (
+    history_id BIGSERIAL PRIMARY KEY,
+    start_ip_int BIGINT,
+    end_ip_int BIGINT,
+    country TEXT,
+    city TEXT,
+    changed_fields TEXT[],
+    log_date TIMESTAMPTZ NOT NULL,
+    end_date TIMESTAMPTZ,
+    active BOOLEAN
+) PARTITION BY RANGE (log_date);
+
+-- 5️⃣ Configure pg_partman for weekly partitions
+SELECT partman.create_parent(
+    p_parent_table     := 'quova_v7.ip_history_test',
+    p_control          := 'log_date',
+    p_type             := 'native',
+    p_interval         := '7 days',
+    p_premake          := 4,  -- Create partitions 4 weeks ahead
+    p_start_partition  := date_trunc('week', NOW()) - interval '12 weeks'
+);
+
+-- 6️⃣ Migrate existing rows into new partitioned table
+INSERT INTO quova_v7.ip_history_test
+SELECT * FROM quova_v7.ip_history_test_old;
+
+-- 7️⃣ Optional: Drop old table after verifying migration
+-- DROP TABLE quova_v7.ip_history_test_old;
+
+-- 8️⃣ (Run Daily) Maintain partitions automatically
+-- You must set this in cron or pgAgent:
+-- SELECT partman.run_maintenance();
+
+
+
+
+
 /var/www/html/scripts/create_keytab.sh
 
 #!/bin/bash
