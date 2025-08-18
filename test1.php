@@ -1,3 +1,88 @@
+CREATE TABLE IF NOT EXISTS quova_v7.ip_history_test (
+    history_id UUID NOT NULL,
+    start_ip_int BIGINT NOT NULL,
+    end_ip_int BIGINT NOT NULL,
+    country VARCHAR(20),
+    country_iso2 VARCHAR(2),
+    city VARCHAR(50),
+    changed_fields TEXT[],
+    log_date DATE NOT NULL,
+    end_date DATE,
+    active BOOLEAN DEFAULT TRUE,
+    PRIMARY KEY (history_id, log_date)
+) PARTITION BY RANGE (log_date);
+
+Function to Create Weekly Partitions
+
+CREATE OR REPLACE FUNCTION quova_v7.create_weekly_partitions(p_weeks_ahead INT)
+RETURNS void LANGUAGE plpgsql AS
+$$
+DECLARE
+    start_date DATE;
+    end_date   DATE;
+    week       INT := 0;
+    partition_name TEXT;
+BEGIN
+    -- Find the Monday of current week
+    start_date := date_trunc('week', current_date)::date;
+    
+    WHILE week < p_weeks_ahead LOOP
+        end_date := start_date + interval '7 days';
+
+        partition_name := format(
+            'ip_history_test_%s',
+            to_char(start_date, 'IYYY"w"IW')
+        );
+
+        -- Create partition if it does not exist
+        EXECUTE format(
+            'CREATE TABLE IF NOT EXISTS quova_v7.%I
+             PARTITION OF quova_v7.ip_history_test
+             FOR VALUES FROM (%L) TO (%L);',
+            partition_name, start_date, end_date
+        );
+
+        -- Move to next week
+        start_date := end_date;
+        week := week + 1;
+    END LOOP;
+END;
+$$;
+
+
+Run It To create partitions for the next 12 weeks:
+
+SELECT quova_v7.create_weekly_partitions(12);
+
+        This will create partitions like:
+
+ip_history_test_2025w34 → 2025-08-18 to 2025-08-25
+
+ip_history_test_2025w35 → 2025-08-25 to 2025-09-01
+        
+----------------
+
+CREATE OR REPLACE FUNCTION quova_v7.create_weekly_partition(start_date DATE) 
+RETURNS void AS $$
+DECLARE
+    end_date DATE := start_date + INTERVAL '7 days';
+    partition_name TEXT := 'ip_history_test_' || to_char(start_date, 'IYYY"W"IW');
+BEGIN
+    EXECUTE format(
+        'CREATE TABLE IF NOT EXISTS quova_v7.%I PARTITION OF quova_v7.ip_history_test
+         FOR VALUES FROM (%L) TO (%L)',
+        partition_name, start_date, end_date
+    );
+END;
+$$ LANGUAGE plpgsql;
+
+call
+SELECT quova_v7.create_weekly_partition('2025-08-18');
+SELECT quova_v7.create_weekly_partition('2025-08-25');
+
+
+
+==========================
 -- 1️⃣ Make sure pg_partman extension is available
 CREATE EXTENSION IF NOT EXISTS pg_partman;
 
