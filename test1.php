@@ -1,3 +1,7 @@
+DROP TABLE quova_v7.ip_history_test_18_8_2025;
+ALTER TABLE quova_v7.ip_history_test DETACH PARTITION quova_v7.ip_history_test_18_8_2025;
+
+
 CREATE TABLE IF NOT EXISTS quova_v7.ip_history_test (
     history_id UUID NOT NULL,
     start_ip_int BIGINT NOT NULL,
