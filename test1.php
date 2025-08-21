@@ -1,3 +1,12 @@
+# Edit cron
+crontab -e
+
+# Add line (runs weekly at 2AM Sunday)
+0 2 * * SUN psql -U youruser -d yourdb -c "SELECT quova_v7.create_future_weekly_partitions(26); SELECT quova_v7.cleanup_old_partitions();"
+
+crontab -e
+0 1 1 * * psql -U your_user -d your_db -c "SELECT quova_v7.create_future_partitions(12);"
+
 DROP TABLE quova_v7.ip_history_test_18_8_2025;
 ALTER TABLE quova_v7.ip_history_test DETACH PARTITION quova_v7.ip_history_test_18_8_2025;
 
