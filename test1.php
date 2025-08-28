@@ -1,3 +1,14 @@
+wc -l 1.csv
+# Output: 101 1.csv   → means 100 records + 1 header
+head -n 5 1.csv
+
+\d quova.ip
+\copy quova.ip (col1, col2, col3, col4) 
+FROM '/home/user/1.csv' 
+DELIMITER ',' 
+CSV HEADER;
+
+
 # Edit cron
 crontab -e
 
