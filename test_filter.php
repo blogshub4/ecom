@@ -127,14 +127,16 @@ AS $$
 DECLARE
     total_records INTEGER;
 BEGIN
+    -- Count all records in the time window
     SELECT COUNT(*) INTO total_records
     FROM quova_v7.ip_history_test
     WHERE log_date >= NOW() - INTERVAL '1 day' * p_days;
 
+    -- Return the breakdown of changes
     RETURN QUERY
 
-    -- Updates
-    SELECT 'update', COUNT(*),
+    -- Updated records
+    SELECT 'update'::TEXT, COUNT(*)::INTEGER,
            ROUND(COUNT(*)::NUMERIC / NULLIF(total_records, 0) * 100, 2)
     FROM quova_v7.ip_history_test
     WHERE log_date >= NOW() - INTERVAL '1 day' * p_days
@@ -143,8 +145,8 @@ BEGIN
 
     UNION ALL
 
-    -- Inserts
-    SELECT 'insert', COUNT(*),
+    -- Inserted records (first time seen within the time range)
+    SELECT 'insert'::TEXT, COUNT(*)::INTEGER,
            ROUND(COUNT(*)::NUMERIC / NULLIF(total_records, 0) * 100, 2)
     FROM (
         SELECT start_ip_int, end_ip_int, MIN(log_date) AS first_seen
@@ -155,8 +157,8 @@ BEGIN
 
     UNION ALL
 
-    -- Deletes
-    SELECT 'delete', COUNT(*),
+    -- Deleted records (latest version marked as inactive)
+    SELECT 'delete'::TEXT, COUNT(*)::INTEGER,
            ROUND(COUNT(*)::NUMERIC / NULLIF(total_records, 0) * 100, 2)
     FROM (
         SELECT DISTINCT ON (start_ip_int, end_ip_int)
