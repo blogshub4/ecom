@@ -13,21 +13,30 @@ BEGIN
     RETURN QUERY
     WITH 
     table1 AS (
-        SELECT COUNT(DISTINCT (ROW(start_ip_int, end_ip_int))) AS cnt 
-        FROM quova_v7.ip_test
+        SELECT COUNT(*) AS cnt
+        FROM (
+            SELECT DISTINCT start_ip_int, end_ip_int
+            FROM quova_v7.ip_test
+        ) x
     ),
     table2 AS (
-        SELECT COUNT(DISTINCT (ROW(start_ip_int, end_ip_int))) AS cnt 
-        FROM quova_v7.ip_history_test
-        WHERE log_date >= NOW() - (p_days || ' days')::interval
+        SELECT COUNT(*) AS cnt
+        FROM (
+            SELECT DISTINCT start_ip_int, end_ip_int
+            FROM quova_v7.ip_history_test
+            WHERE log_date >= NOW() - (p_days || ' days')::interval
+        ) y
     ),
     common AS (
-        SELECT COUNT(DISTINCT (ROW(t1.start_ip_int, t1.end_ip_int))) AS cnt
-        FROM quova_v7.ip_test t1
-        JOIN quova_v7.ip_history_test t2
-          ON t1.start_ip_int = t2.start_ip_int
-         AND t1.end_ip_int   = t2.end_ip_int
-        WHERE t2.log_date >= NOW() - (p_days || ' days')::interval
+        SELECT COUNT(*) AS cnt
+        FROM (
+            SELECT DISTINCT t1.start_ip_int, t1.end_ip_int
+            FROM quova_v7.ip_test t1
+            JOIN quova_v7.ip_history_test t2
+              ON t1.start_ip_int = t2.start_ip_int
+             AND t1.end_ip_int   = t2.end_ip_int
+            WHERE t2.log_date >= NOW() - (p_days || ' days')::interval
+        ) z
     )
     SELECT 
         t1.cnt AS total_ip_table1,
@@ -45,6 +54,7 @@ BEGIN
     FROM table1 t1, table2 t2, common c;
 END;
 $$;
+
 
 
 
