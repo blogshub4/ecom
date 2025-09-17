@@ -11,6 +11,65 @@ RETURNS TABLE (
 LANGUAGE plpgsql
 AS $$
 DECLARE
+    v_ip BIGINT := 0;
+    v_history BIGINT := 0;
+    v_common BIGINT := 0;
+    v_total BIGINT := 0;
+BEGIN
+    -- total records in ip_test (not time-based since no log_date there)
+    SELECT COUNT(*) INTO v_ip
+    FROM quova_v7.ip_test;
+
+    -- total records in ip_history_test within time window
+    SELECT COUNT(*) INTO v_history
+    FROM quova_v7.ip_history_test h
+    WHERE h.log_date >= NOW() - (p_days || ' days')::INTERVAL;
+
+    -- common (records in both tables, active history only, within time window)
+    SELECT COUNT(*) INTO v_common
+    FROM quova_v7.ip_test t
+    JOIN quova_v7.ip_history_test h
+      ON t.start_ip_int = h.start_ip_int
+     AND h.active = TRUE
+    WHERE h.log_date >= NOW() - (p_days || ' days')::INTERVAL;
+
+    -- total = union (ip + history - common)
+    v_total := v_ip + v_history - v_common;
+
+    -- ip_only = ip - common
+    ip_only_count := v_ip - v_common;
+
+    -- history_only = history - common
+    history_only_count := v_history - v_common;
+
+    common_count := v_common;
+    total        := v_total;
+
+    -- percentages
+    ip_only_pct       := CASE WHEN v_total > 0 THEN ROUND(100.0 * (v_ip - v_common) / v_total, 2) ELSE 0 END;
+    history_only_pct  := CASE WHEN v_total > 0 THEN ROUND(100.0 * (v_history - v_common) / v_total, 2) ELSE 0 END;
+    common_pct        := CASE WHEN v_total > 0 THEN ROUND(100.0 * v_common / v_total, 2) ELSE 0 END;
+
+    RETURN NEXT;
+END;
+$$;
+
+
+--------------
+
+CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days INT DEFAULT 7)
+RETURNS TABLE (
+    ip_only_count BIGINT,
+    history_only_count BIGINT,
+    common_count BIGINT,
+    total BIGINT,
+    ip_only_pct NUMERIC,
+    history_only_pct NUMERIC,
+    common_pct NUMERIC
+)
+LANGUAGE plpgsql
+AS $$
+DECLARE
     v_ip_only BIGINT := 0;
     v_history_only BIGINT := 0;
     v_common BIGINT := 0;
