@@ -13,16 +13,16 @@ BEGIN
     RETURN QUERY
     WITH 
     table1 AS (
-        SELECT COUNT(DISTINCT start_ip_int, end_ip_int) AS cnt 
+        SELECT COUNT(DISTINCT (ROW(start_ip_int, end_ip_int))) AS cnt 
         FROM quova_v7.ip_test
     ),
     table2 AS (
-        SELECT COUNT(DISTINCT start_ip_int, end_ip_int) AS cnt 
+        SELECT COUNT(DISTINCT (ROW(start_ip_int, end_ip_int))) AS cnt 
         FROM quova_v7.ip_history_test
         WHERE log_date >= NOW() - (p_days || ' days')::interval
     ),
     common AS (
-        SELECT COUNT(DISTINCT t1.start_ip_int, t1.end_ip_int) AS cnt
+        SELECT COUNT(DISTINCT (ROW(t1.start_ip_int, t1.end_ip_int))) AS cnt
         FROM quova_v7.ip_test t1
         JOIN quova_v7.ip_history_test t2
           ON t1.start_ip_int = t2.start_ip_int
