@@ -1,3 +1,58 @@
+CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days INT DEFAULT 7)
+RETURNS TABLE (
+    ip_only_count BIGINT,
+    history_only_count BIGINT,
+    common_count BIGINT,
+    total BIGINT,
+    ip_only_pct NUMERIC,
+    history_only_pct NUMERIC,
+    common_pct NUMERIC
+) AS $$
+BEGIN
+  RETURN QUERY
+  WITH ip_only AS (
+    SELECT COUNT(*) AS cnt
+    FROM quova_v7.ip_test t
+    LEFT JOIN quova_v7.ip_history_test h
+      ON t.start_ip_int = h.start_ip_int
+     AND h.active = TRUE
+    WHERE h.start_ip_int IS NULL
+      AND t.log_date >= NOW() - (p_days || ' days')::INTERVAL
+  ),
+  history_only AS (
+    SELECT COUNT(*) AS cnt
+    FROM quova_v7.ip_history_test h
+    LEFT JOIN quova_v7.ip_test t
+      ON h.start_ip_int = t.start_ip_int
+    WHERE t.start_ip_int IS NULL
+      AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL
+  ),
+  common AS (
+    SELECT COUNT(*) AS cnt
+    FROM quova_v7.ip_test t
+    JOIN quova_v7.ip_history_test h
+      ON t.start_ip_int = h.start_ip_int
+     AND h.active = TRUE
+    WHERE t.log_date >= NOW() - (p_days || ' days')::INTERVAL
+      AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL
+  )
+  SELECT
+    ip_only.cnt,
+    history_only.cnt,
+    common.cnt,
+    (ip_only.cnt + history_only.cnt + common.cnt) AS total,
+    ROUND(100.0 * ip_only.cnt / NULLIF((ip_only.cnt + history_only.cnt + common.cnt),0),2),
+    ROUND(100.0 * history_only.cnt / NULLIF((ip_only.cnt + history_only.cnt + common.cnt),0),2),
+    ROUND(100.0 * common.cnt / NULLIF((ip_only.cnt + history_only.cnt + common.cnt),0),2)
+  FROM ip_only, history_only, common;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
+
+///////////////////////
+
 CREATE OR REPLACE FUNCTION quova_v7.get_top_changed_rows_with_fields(
     p_days INTEGER DEFAULT 7,
     p_limit INTEGER DEFAULT 10
