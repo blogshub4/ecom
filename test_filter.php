@@ -7,7 +7,9 @@ RETURNS TABLE (
     ip_only_pct NUMERIC,
     history_only_pct NUMERIC,
     common_pct NUMERIC
-) AS $$
+) 
+LANGUAGE plpgsql
+AS $$
 BEGIN
   RETURN QUERY
   WITH ip_only AS (
@@ -41,12 +43,19 @@ BEGIN
     history_only.cnt,
     common.cnt,
     (ip_only.cnt + history_only.cnt + common.cnt) AS total,
-    ROUND(100.0 * ip_only.cnt / NULLIF((ip_only.cnt + history_only.cnt + common.cnt),0),2),
-    ROUND(100.0 * history_only.cnt / NULLIF((ip_only.cnt + history_only.cnt + common.cnt),0),2),
-    ROUND(100.0 * common.cnt / NULLIF((ip_only.cnt + history_only.cnt + common.cnt),0),2)
+    CASE WHEN (ip_only.cnt + history_only.cnt + common.cnt) > 0
+         THEN ROUND(100.0 * ip_only.cnt / (ip_only.cnt + history_only.cnt + common.cnt), 2)
+         ELSE 0 END,
+    CASE WHEN (ip_only.cnt + history_only.cnt + common.cnt) > 0
+         THEN ROUND(100.0 * history_only.cnt / (ip_only.cnt + history_only.cnt + common.cnt), 2)
+         ELSE 0 END,
+    CASE WHEN (ip_only.cnt + history_only.cnt + common.cnt) > 0
+         THEN ROUND(100.0 * common.cnt / (ip_only.cnt + history_only.cnt + common.cnt), 2)
+         ELSE 0 END
   FROM ip_only, history_only, common;
 END;
-$$ LANGUAGE plpgsql;
+$$;
+
 
 
 
