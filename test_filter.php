@@ -1,18 +1,50 @@
-
 CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days integer DEFAULT 7)
 RETURNS TABLE (
     ip_count bigint,
-    history_count bigint
+    history_count bigint,
+    common_count bigint,
+    total bigint,
+    ip_pct numeric,
+    history_pct numeric,
+    common_pct numeric
 )
 LANGUAGE plpgsql
 AS $$
 BEGIN
     RETURN QUERY
+    WITH
+    t1 AS (
+        SELECT COUNT(*)::bigint AS cnt
+        FROM quova_v7.ip_test
+    ),
+    t2 AS (
+        SELECT COUNT(*)::bigint AS cnt
+        FROM quova_v7.ip_history_test
+        WHERE log_date >= NOW() - (p_days || ' days')::interval
+    ),
+    common AS (
+        SELECT COUNT(*)::bigint AS cnt
+        FROM quova_v7.ip_test a
+        JOIN quova_v7.ip_history_test b
+          ON a.start_ip_int = b.start_ip_int
+         AND a.end_ip_int   = b.end_ip_int
+        WHERE b.log_date >= NOW() - (p_days || ' days')::interval
+    )
     SELECT
-        COUNT(*)::bigint,
-        COUNT(*)::bigint
-    FROM quova_v7.ip_test t
-    CROSS JOIN quova_v7.ip_history_test h;
+        t1.cnt AS ip_count,
+        t2.cnt AS history_count,
+        common.cnt AS common_count,
+        (t1.cnt + t2.cnt - common.cnt) AS total,
+        CASE WHEN (t1.cnt + t2.cnt - common.cnt) > 0
+             THEN ROUND((t1.cnt::numeric * 100) / (t1.cnt + t2.cnt - common.cnt), 2)
+             ELSE 0 END AS ip_pct,
+        CASE WHEN (t1.cnt + t2.cnt - common.cnt) > 0
+             THEN ROUND((t2.cnt::numeric * 100) / (t1.cnt + t2.cnt - common.cnt), 2)
+             ELSE 0 END AS history_pct,
+        CASE WHEN (t1.cnt + t2.cnt - common.cnt) > 0
+             THEN ROUND((common.cnt::numeric * 100) / (t1.cnt + t2.cnt - common.cnt), 2)
+             ELSE 0 END AS common_pct
+    FROM t1, t2, common;
 END;
 $$;
 
