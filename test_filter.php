@@ -1,11 +1,11 @@
 CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days integer DEFAULT 7)
 RETURNS TABLE (
-    ip_count bigint,
-    history_count bigint,
+    only_ip bigint,
+    only_history bigint,
     common_count bigint,
     total bigint,
-    ip_pct numeric,
-    history_pct numeric,
+    only_ip_pct numeric,
+    only_history_pct numeric,
     common_pct numeric
 )
 LANGUAGE plpgsql
@@ -31,19 +31,39 @@ BEGIN
         WHERE b.log_date >= NOW() - (p_days || ' days')::interval
     )
     SELECT
-        t1.cnt AS ip_count,
-        t2.cnt AS history_count,
+        GREATEST(t1.cnt - common.cnt, 0) AS only_ip,        -- ensure no negatives
+        GREATEST(t2.cnt - common.cnt, 0) AS only_history,
         common.cnt AS common_count,
-        (t1.cnt + t2.cnt - common.cnt) AS total,
-        CASE WHEN (t1.cnt + t2.cnt - common.cnt) > 0
-             THEN ROUND((t1.cnt::numeric * 100) / (t1.cnt + t2.cnt - common.cnt), 2)
-             ELSE 0 END AS ip_pct,
-        CASE WHEN (t1.cnt + t2.cnt - common.cnt) > 0
-             THEN ROUND((t2.cnt::numeric * 100) / (t1.cnt + t2.cnt - common.cnt), 2)
-             ELSE 0 END AS history_pct,
-        CASE WHEN (t1.cnt + t2.cnt - common.cnt) > 0
-             THEN ROUND((common.cnt::numeric * 100) / (t1.cnt + t2.cnt - common.cnt), 2)
-             ELSE 0 END AS common_pct
+        GREATEST(t1.cnt - common.cnt, 0) 
+          + GREATEST(t2.cnt - common.cnt, 0) 
+          + common.cnt AS total,
+        ROUND(
+          CASE WHEN (GREATEST(t1.cnt - common.cnt,0) 
+                   + GREATEST(t2.cnt - common.cnt,0) 
+                   + common.cnt) > 0
+               THEN (GREATEST(t1.cnt - common.cnt,0)::numeric * 100) /
+                    (GREATEST(t1.cnt - common.cnt,0) 
+                   + GREATEST(t2.cnt - common.cnt,0) 
+                   + common.cnt)
+               ELSE 0 END, 2) AS only_ip_pct,
+        ROUND(
+          CASE WHEN (GREATEST(t1.cnt - common.cnt,0) 
+                   + GREATEST(t2.cnt - common.cnt,0) 
+                   + common.cnt) > 0
+               THEN (GREATEST(t2.cnt - common.cnt,0)::numeric * 100) /
+                    (GREATEST(t1.cnt - common.cnt,0) 
+                   + GREATEST(t2.cnt - common.cnt,0) 
+                   + common.cnt)
+               ELSE 0 END, 2) AS only_history_pct,
+        ROUND(
+          CASE WHEN (GREATEST(t1.cnt - common.cnt,0) 
+                   + GREATEST(t2.cnt - common.cnt,0) 
+                   + common.cnt) > 0
+               THEN (common.cnt::numeric * 100) /
+                    (GREATEST(t1.cnt - common.cnt,0) 
+                   + GREATEST(t2.cnt - common.cnt,0) 
+                   + common.cnt)
+               ELSE 0 END, 2) AS common_pct
     FROM t1, t2, common;
 END;
 $$;
