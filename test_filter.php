@@ -7,54 +7,58 @@ RETURNS TABLE (
     ip_only_pct NUMERIC,
     history_only_pct NUMERIC,
     common_pct NUMERIC
-) 
+)
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_ip_only BIGINT := 0;
+    v_history_only BIGINT := 0;
+    v_common BIGINT := 0;
+    v_total BIGINT := 0;
 BEGIN
-  RETURN QUERY
-  WITH ip_only AS (
-    SELECT COUNT(*) AS cnt
+    -- ip_only
+    SELECT COUNT(*) INTO v_ip_only
     FROM quova_v7.ip_test t
     LEFT JOIN quova_v7.ip_history_test h
       ON t.start_ip_int = h.start_ip_int
      AND h.active = TRUE
     WHERE h.start_ip_int IS NULL
-      AND t.log_date >= NOW() - (p_days || ' days')::INTERVAL
-  ),
-  history_only AS (
-    SELECT COUNT(*) AS cnt
+      AND t.log_date >= NOW() - (p_days || ' days')::INTERVAL;
+
+    -- history_only
+    SELECT COUNT(*) INTO v_history_only
     FROM quova_v7.ip_history_test h
     LEFT JOIN quova_v7.ip_test t
       ON h.start_ip_int = t.start_ip_int
     WHERE t.start_ip_int IS NULL
-      AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL
-  ),
-  common AS (
-    SELECT COUNT(*) AS cnt
+      AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL;
+
+    -- common
+    SELECT COUNT(*) INTO v_common
     FROM quova_v7.ip_test t
     JOIN quova_v7.ip_history_test h
       ON t.start_ip_int = h.start_ip_int
      AND h.active = TRUE
     WHERE t.log_date >= NOW() - (p_days || ' days')::INTERVAL
-      AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL
-  )
-  SELECT
-    ip_only.cnt,
-    history_only.cnt,
-    common.cnt,
-    (ip_only.cnt + history_only.cnt + common.cnt) AS total,
-    CASE WHEN (ip_only.cnt + history_only.cnt + common.cnt) > 0
-         THEN ROUND(100.0 * ip_only.cnt / (ip_only.cnt + history_only.cnt + common.cnt), 2)
-         ELSE 0 END,
-    CASE WHEN (ip_only.cnt + history_only.cnt + common.cnt) > 0
-         THEN ROUND(100.0 * history_only.cnt / (ip_only.cnt + history_only.cnt + common.cnt), 2)
-         ELSE 0 END,
-    CASE WHEN (ip_only.cnt + history_only.cnt + common.cnt) > 0
-         THEN ROUND(100.0 * common.cnt / (ip_only.cnt + history_only.cnt + common.cnt), 2)
-         ELSE 0 END
-  FROM ip_only, history_only, common;
+      AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL;
+
+    -- totals
+    v_total := v_ip_only + v_history_only + v_common;
+
+    -- return row
+    ip_only_count     := v_ip_only;
+    history_only_count := v_history_only;
+    common_count      := v_common;
+    total             := v_total;
+
+    ip_only_pct       := CASE WHEN v_total > 0 THEN ROUND(100.0 * v_ip_only / v_total, 2) ELSE 0 END;
+    history_only_pct  := CASE WHEN v_total > 0 THEN ROUND(100.0 * v_history_only / v_total, 2) ELSE 0 END;
+    common_pct        := CASE WHEN v_total > 0 THEN ROUND(100.0 * v_common / v_total, 2) ELSE 0 END;
+
+    RETURN NEXT;
 END;
 $$;
+
 
 
 
