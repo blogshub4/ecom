@@ -2,44 +2,20 @@ CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_dummy integer)
 RETURNS TABLE (
     ip_count bigint,
     history_count bigint,
-    common_count bigint,
-    total bigint,
-    ip_pct numeric,
-    history_pct numeric,
-    common_pct numeric
+    common_count bigint
 )
 LANGUAGE plpgsql
 AS $$
 BEGIN
     RETURN QUERY
-    WITH ip AS (
-        SELECT COUNT(*)::bigint AS cnt FROM quova_v7.ip_test
-    ),
-    hist AS (
-        SELECT COUNT(*)::bigint AS cnt FROM quova_v7.ip_history_test
-    ),
-    common AS (
-        SELECT COUNT(*)::bigint AS cnt
-        FROM quova_v7.ip_test t
-        JOIN quova_v7.ip_history_test h
-          ON t.start_ip_int = h.start_ip_int
-         AND t.end_ip_int   = h.end_ip_int
-    )
     SELECT 
-        ip.cnt AS ip_count,
-        hist.cnt AS history_count,
-        common.cnt AS common_count,
-        (ip.cnt + hist.cnt - common.cnt) AS total,
-        CASE WHEN (ip.cnt + hist.cnt - common.cnt) > 0 
-             THEN ROUND((ip.cnt * 100.0) / (ip.cnt + hist.cnt - common.cnt), 2) 
-             ELSE 0 END AS ip_pct,
-        CASE WHEN (ip.cnt + hist.cnt - common.cnt) > 0 
-             THEN ROUND((hist.cnt * 100.0) / (ip.cnt + hist.cnt - common.cnt), 2) 
-             ELSE 0 END AS history_pct,
-        CASE WHEN (ip.cnt + hist.cnt - common.cnt) > 0 
-             THEN ROUND((common.cnt * 100.0) / (ip.cnt + hist.cnt - common.cnt), 2) 
-             ELSE 0 END AS common_pct
-    FROM ip, hist, common;
+        (SELECT COUNT(*)::bigint FROM quova_v7.ip_test) AS ip_count,
+        (SELECT COUNT(*)::bigint FROM quova_v7.ip_history_test) AS history_count,
+        (SELECT COUNT(*)::bigint 
+         FROM quova_v7.ip_test t
+         JOIN quova_v7.ip_history_test h
+           ON t.start_ip_int = h.start_ip_int
+          AND t.end_ip_int   = h.end_ip_int) AS common_count;
 END;
 $$;
 
