@@ -1,3 +1,49 @@
+CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days INTEGER DEFAULT 7)
+RETURNS TABLE (
+    ip_only_count INTEGER,
+    history_only_count INTEGER,
+    common_count INTEGER,
+    total INTEGER,
+    ip_only_pct NUMERIC,
+    history_only_pct NUMERIC,
+    common_pct NUMERIC
+)
+LANGUAGE plpgsql AS $$
+BEGIN
+    RETURN QUERY
+    WITH ip AS (
+        SELECT COUNT(DISTINCT ip_range) AS cnt
+        FROM quova_v7.ip_test
+        WHERE log_date >= CURRENT_DATE - p_days
+    ),
+    history AS (
+        SELECT COUNT(DISTINCT ip_range) AS cnt
+        FROM quova_v7.ip_history_test
+        WHERE log_date >= CURRENT_DATE - p_days
+    ),
+    common AS (
+        SELECT COUNT(DISTINCT t.ip_range) AS cnt
+        FROM quova_v7.ip_test t
+        JOIN quova_v7.ip_history_test h
+            ON t.ip_range = h.ip_range
+        WHERE t.log_date >= CURRENT_DATE - p_days
+          AND h.log_date >= CURRENT_DATE - p_days
+    )
+    SELECT
+        (ip.cnt - common.cnt) AS ip_only_count,
+        (history.cnt - common.cnt) AS history_only_count,
+        common.cnt AS common_count,
+        (ip.cnt + history.cnt - common.cnt) AS total,
+        ROUND(((ip.cnt - common.cnt)::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS ip_only_pct,
+        ROUND(((history.cnt - common.cnt)::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS history_only_pct,
+        ROUND((common.cnt::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS common_pct
+    FROM ip, history, common;
+END;
+$$;
+
+
+==========================
+
 CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days INT DEFAULT 7)
 RETURNS TABLE (
     ip_only_count BIGINT,
