@@ -1,16 +1,4 @@
 CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_dummy integer)
-RETURNS TABLE (val int)
-LANGUAGE plpgsql
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 1;
-END;
-$$;
-
-
-
-CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_dummy integer)
 RETURNS TABLE (
     ip_count bigint,
     history_count bigint
@@ -20,8 +8,9 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT 
-        (SELECT COUNT(*)::bigint FROM quova_v7.ip_test),
-        (SELECT COUNT(*)::bigint FROM quova_v7.ip_history_test);
+        COUNT(*)::bigint AS ip_count,
+        (SELECT COUNT(*) FROM quova_v7.ip_history_test)::bigint AS history_count
+    FROM quova_v7.ip_test;
 END;
 $$;
 
