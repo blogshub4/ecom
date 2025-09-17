@@ -1,3 +1,46 @@
+CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(dummy integer DEFAULT 0)
+RETURNS TABLE (
+    total_ip_table1 bigint,
+    total_ip_table2 bigint,
+    common_ip bigint,
+    ip_pct_file1 numeric,
+    ip_pct_file2 numeric,
+    ip_pct_union numeric
+) AS $$
+BEGIN
+    RETURN QUERY
+    WITH 
+    table1 AS (
+        SELECT COUNT(*) AS cnt FROM ip_test
+    ),
+    table2 AS (
+        SELECT COUNT(*) AS cnt FROM ip_history_test
+    ),
+    common AS (
+        SELECT COUNT(*) AS cnt
+        FROM ip_test t1
+        JOIN ip_history_test t2
+          ON t1.start_ip_int = t2.start_ip_int
+         AND t1.end_ip_int = t2.end_ip_int
+         -- include more fields if you want stricter comparison
+    )
+    SELECT 
+        t1.cnt AS total_ip_table1,
+        t2.cnt AS total_ip_table2,
+        c.cnt AS common_ip,
+        CASE WHEN t1.cnt > 0 THEN ROUND(c.cnt::numeric / t1.cnt * 100, 2) ELSE 0 END AS ip_pct_file1,
+        CASE WHEN t2.cnt > 0 THEN ROUND(c.cnt::numeric / t2.cnt * 100, 2) ELSE 0 END AS ip_pct_file2,
+        CASE 
+            WHEN (t1.cnt + t2.cnt - c.cnt) > 0 
+            THEN ROUND(c.cnt::numeric / (t1.cnt + t2.cnt - c.cnt) * 100, 2) 
+            ELSE 0 
+        END AS ip_pct_union
+    FROM table1 t1, table2 t2, common c;
+END;
+$$ LANGUAGE plpgsql;
+
+
+
 CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days INTEGER DEFAULT 7)
 RETURNS TABLE (
     ip_only_count INTEGER,
