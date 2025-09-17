@@ -8,7 +8,7 @@ RETURNS TABLE (
     history_only_pct NUMERIC,
     common_pct NUMERIC
 )
-LANGUAGE plpgsql AS $$
+AS $$
 BEGIN
     RETURN QUERY
     WITH ip AS (
@@ -39,7 +39,8 @@ BEGIN
         ROUND((common.cnt::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS common_pct
     FROM ip, history, common;
 END;
-$$;
+$$ LANGUAGE plpgsql;
+
 
 
 ==========================
