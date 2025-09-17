@@ -9,34 +9,43 @@ RETURNS TABLE (
     common_pct NUMERIC
 )
 LANGUAGE plpgsql AS $$
+DECLARE
+    v_ip_cnt INTEGER;
+    v_history_cnt INTEGER;
+    v_common_cnt INTEGER;
 BEGIN
+    -- Get counts into variables first
+    SELECT COUNT(DISTINCT ROW(start_ip_int, end_ip_int))
+    INTO v_ip_cnt
+    FROM quova_v7.ip_test;
+
+    SELECT COUNT(DISTINCT ROW(start_ip_int, end_ip_int))
+    INTO v_history_cnt
+    FROM quova_v7.ip_history_test
+    WHERE log_date >= CURRENT_DATE - p_days;
+
+    SELECT COUNT(DISTINCT ROW(i.start_ip_int, i.end_ip_int))
+    INTO v_common_cnt
+    FROM quova_v7.ip_test i
+    JOIN quova_v7.ip_history_test h
+      ON i.start_ip_int = h.start_ip_int
+     AND i.end_ip_int   = h.end_ip_int
+    WHERE h.log_date >= CURRENT_DATE - p_days;
+
+    -- Debug output
+    RAISE NOTICE 'IP count = %, History count = %, Common count = %',
+                 v_ip_cnt, v_history_cnt, v_common_cnt;
+
+    -- Return the final results
     RETURN QUERY
-    WITH ip AS (
-        SELECT COUNT(DISTINCT (start_ip_int, end_ip_int)) AS cnt
-        FROM quova_v7.ip_test
-    ),
-    history AS (
-        SELECT COUNT(DISTINCT (start_ip_int, end_ip_int)) AS cnt
-        FROM quova_v7.ip_history_test
-        WHERE log_date >= CURRENT_DATE - p_days
-    ),
-    common AS (
-        SELECT COUNT(DISTINCT i.start_ip_int, i.end_ip_int) AS cnt
-        FROM quova_v7.ip_test i
-        JOIN quova_v7.ip_history_test h
-          ON i.start_ip_int = h.start_ip_int
-         AND i.end_ip_int   = h.end_ip_int
-        WHERE h.log_date >= CURRENT_DATE - p_days
-    )
     SELECT
-        (ip.cnt - common.cnt) AS ip_only_count,
-        (history.cnt - common.cnt) AS history_only_count,
-        common.cnt AS common_count,
-        (ip.cnt + history.cnt - common.cnt) AS total,
-        ROUND(((ip.cnt - common.cnt)::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS ip_only_pct,
-        ROUND(((history.cnt - common.cnt)::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS history_only_pct,
-        ROUND((common.cnt::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS common_pct
-    FROM ip, history, common;
+        (v_ip_cnt - v_common_cnt) AS ip_only_count,
+        (v_history_cnt - v_common_cnt) AS history_only_count,
+        v_common_cnt AS common_count,
+        (v_ip_cnt + v_history_cnt - v_common_cnt) AS total,
+        ROUND(((v_ip_cnt - v_common_cnt)::NUMERIC / NULLIF((v_ip_cnt + v_history_cnt - v_common_cnt),0)) * 100, 2) AS ip_only_pct,
+        ROUND(((v_history_cnt - v_common_cnt)::NUMERIC / NULLIF((v_ip_cnt + v_history_cnt - v_common_cnt),0)) * 100, 2) AS history_only_pct,
+        ROUND((v_common_cnt::NUMERIC / NULLIF((v_ip_cnt + v_history_cnt - v_common_cnt),0)) * 100, 2) AS common_pct;
 END;
 $$;
 
