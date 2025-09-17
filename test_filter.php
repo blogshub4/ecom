@@ -8,26 +8,25 @@ RETURNS TABLE (
     history_only_pct NUMERIC,
     common_pct NUMERIC
 )
-AS $$
+LANGUAGE plpgsql AS $$
 BEGIN
     RETURN QUERY
     WITH ip AS (
-        SELECT COUNT(DISTINCT ip_range) AS cnt
+        SELECT COUNT(DISTINCT (start_ip_int, end_ip_int)) AS cnt
         FROM quova_v7.ip_test
-        WHERE log_date >= CURRENT_DATE - p_days
     ),
     history AS (
-        SELECT COUNT(DISTINCT ip_range) AS cnt
+        SELECT COUNT(DISTINCT (start_ip_int, end_ip_int)) AS cnt
         FROM quova_v7.ip_history_test
         WHERE log_date >= CURRENT_DATE - p_days
     ),
     common AS (
-        SELECT COUNT(DISTINCT t.ip_range) AS cnt
-        FROM quova_v7.ip_test t
+        SELECT COUNT(DISTINCT i.start_ip_int, i.end_ip_int) AS cnt
+        FROM quova_v7.ip_test i
         JOIN quova_v7.ip_history_test h
-            ON t.ip_range = h.ip_range
-        WHERE t.log_date >= CURRENT_DATE - p_days
-          AND h.log_date >= CURRENT_DATE - p_days
+          ON i.start_ip_int = h.start_ip_int
+         AND i.end_ip_int   = h.end_ip_int
+        WHERE h.log_date >= CURRENT_DATE - p_days
     )
     SELECT
         (ip.cnt - common.cnt) AS ip_only_count,
@@ -39,7 +38,7 @@ BEGIN
         ROUND((common.cnt::NUMERIC / NULLIF((ip.cnt + history.cnt - common.cnt),0)) * 100, 2) AS common_pct
     FROM ip, history, common;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
 
 
