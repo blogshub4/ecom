@@ -16,16 +16,15 @@ DECLARE
     v_common BIGINT := 0;
     v_total BIGINT := 0;
 BEGIN
-    -- ip_only
+    -- ip_only (records present in ip_test but not in active history)
     SELECT COUNT(*) INTO v_ip_only
     FROM quova_v7.ip_test t
     LEFT JOIN quova_v7.ip_history_test h
       ON t.start_ip_int = h.start_ip_int
      AND h.active = TRUE
-    WHERE h.start_ip_int IS NULL
-      AND t.log_date >= NOW() - (p_days || ' days')::INTERVAL;
+    WHERE h.start_ip_int IS NULL;
 
-    -- history_only
+    -- history_only (records in history but not in ip_test, within time window)
     SELECT COUNT(*) INTO v_history_only
     FROM quova_v7.ip_history_test h
     LEFT JOIN quova_v7.ip_test t
@@ -33,23 +32,22 @@ BEGIN
     WHERE t.start_ip_int IS NULL
       AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL;
 
-    -- common
+    -- common (records in both ip_test and active history, within time window)
     SELECT COUNT(*) INTO v_common
     FROM quova_v7.ip_test t
     JOIN quova_v7.ip_history_test h
       ON t.start_ip_int = h.start_ip_int
      AND h.active = TRUE
-    WHERE t.log_date >= NOW() - (p_days || ' days')::INTERVAL
-      AND h.log_date >= NOW() - (p_days || ' days')::INTERVAL;
+    WHERE h.log_date >= NOW() - (p_days || ' days')::INTERVAL;
 
     -- totals
     v_total := v_ip_only + v_history_only + v_common;
 
-    -- return row
-    ip_only_count     := v_ip_only;
+    -- assign output columns
+    ip_only_count      := v_ip_only;
     history_only_count := v_history_only;
-    common_count      := v_common;
-    total             := v_total;
+    common_count       := v_common;
+    total              := v_total;
 
     ip_only_pct       := CASE WHEN v_total > 0 THEN ROUND(100.0 * v_ip_only / v_total, 2) ELSE 0 END;
     history_only_pct  := CASE WHEN v_total > 0 THEN ROUND(100.0 * v_history_only / v_total, 2) ELSE 0 END;
@@ -58,6 +56,7 @@ BEGIN
     RETURN NEXT;
 END;
 $$;
+
 
 
 
