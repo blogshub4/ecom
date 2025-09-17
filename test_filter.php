@@ -1,3 +1,35 @@
+WITH 
+table1 AS (
+    SELECT COUNT(*) AS cnt FROM quova_v7.ip_test
+),
+table2 AS (
+    SELECT COUNT(*) AS cnt FROM quova_v7.ip_history_test
+),
+common AS (
+    SELECT COUNT(*) AS cnt
+    FROM quova_v7.ip_test t1
+    JOIN quova_v7.ip_history_test t2
+      ON t1.start_ip_int = t2.start_ip_int
+     AND t1.end_ip_int   = t2.end_ip_int
+)
+SELECT 
+    t1.cnt AS total_ip_table1,              -- like File1 count
+    t2.cnt AS total_ip_table2,              -- like File2 count
+    c.cnt AS common_ip,                     -- common records
+    CASE WHEN t1.cnt > 0 
+         THEN ROUND(c.cnt::numeric / t1.cnt * 100, 2) 
+         ELSE 0 END AS pct_with_file1,      -- common % with File1
+    CASE WHEN t2.cnt > 0 
+         THEN ROUND(c.cnt::numeric / t2.cnt * 100, 2) 
+         ELSE 0 END AS pct_with_file2,      -- common % with File2
+    CASE WHEN (t1.cnt + t2.cnt - c.cnt) > 0
+         THEN ROUND(c.cnt::numeric / (t1.cnt + t2.cnt - c.cnt) * 100, 2)
+         ELSE 0 END AS pct_union            -- venn diagram formula
+FROM table1 t1, table2 t2, common c;
+
+
+
+
 CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(dummy integer DEFAULT 0)
 RETURNS TABLE (
     total_ip_table1 bigint,
