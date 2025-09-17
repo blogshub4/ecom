@@ -1,57 +1,45 @@
-CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_days integer DEFAULT 7)
+CREATE OR REPLACE FUNCTION quova_v7.get_ip_sync_stats(p_dummy integer)
 RETURNS TABLE (
-    total_ip_table1 bigint,
-    total_ip_table2 bigint,
-    common_ip bigint,
-    pct_with_file1 numeric,
-    pct_with_file2 numeric,
-    pct_union numeric
+    ip_count bigint,
+    history_count bigint,
+    common_count bigint,
+    total bigint,
+    ip_pct numeric,
+    history_pct numeric,
+    common_pct numeric
 )
 LANGUAGE plpgsql
 AS $$
 BEGIN
     RETURN QUERY
-    WITH 
-    table1 AS (
-        SELECT COUNT(*) AS cnt
-        FROM (
-            SELECT DISTINCT start_ip_int, end_ip_int
-            FROM quova_v7.ip_test
-        ) x
+    WITH ip AS (
+        SELECT COUNT(*)::bigint AS cnt FROM quova_v7.ip_test
     ),
-    table2 AS (
-        SELECT COUNT(*) AS cnt
-        FROM (
-            SELECT DISTINCT start_ip_int, end_ip_int
-            FROM quova_v7.ip_history_test
-            WHERE log_date >= NOW() - (p_days || ' days')::interval
-        ) y
+    hist AS (
+        SELECT COUNT(*)::bigint AS cnt FROM quova_v7.ip_history_test
     ),
     common AS (
-        SELECT COUNT(*) AS cnt
-        FROM (
-            SELECT DISTINCT t1.start_ip_int, t1.end_ip_int
-            FROM quova_v7.ip_test t1
-            JOIN quova_v7.ip_history_test t2
-              ON t1.start_ip_int = t2.start_ip_int
-             AND t1.end_ip_int   = t2.end_ip_int
-            WHERE t2.log_date >= NOW() - (p_days || ' days')::interval
-        ) z
+        SELECT COUNT(*)::bigint AS cnt
+        FROM quova_v7.ip_test t
+        JOIN quova_v7.ip_history_test h
+          ON t.start_ip_int = h.start_ip_int
+         AND t.end_ip_int   = h.end_ip_int
     )
     SELECT 
-        t1.cnt AS total_ip_table1,
-        t2.cnt AS total_ip_table2,
-        c.cnt  AS common_ip,
-        CASE WHEN t1.cnt > 0 
-             THEN ROUND(c.cnt::numeric / t1.cnt * 100, 2) 
-             ELSE 0 END AS pct_with_file1,
-        CASE WHEN t2.cnt > 0 
-             THEN ROUND(c.cnt::numeric / t2.cnt * 100, 2) 
-             ELSE 0 END AS pct_with_file2,
-        CASE WHEN (t1.cnt + t2.cnt - c.cnt) > 0
-             THEN ROUND(c.cnt::numeric / (t1.cnt + t2.cnt - c.cnt) * 100, 2)
-             ELSE 0 END AS pct_union
-    FROM table1 t1, table2 t2, common c;
+        ip.cnt AS ip_count,
+        hist.cnt AS history_count,
+        common.cnt AS common_count,
+        (ip.cnt + hist.cnt - common.cnt) AS total,
+        CASE WHEN (ip.cnt + hist.cnt - common.cnt) > 0 
+             THEN ROUND((ip.cnt * 100.0) / (ip.cnt + hist.cnt - common.cnt), 2) 
+             ELSE 0 END AS ip_pct,
+        CASE WHEN (ip.cnt + hist.cnt - common.cnt) > 0 
+             THEN ROUND((hist.cnt * 100.0) / (ip.cnt + hist.cnt - common.cnt), 2) 
+             ELSE 0 END AS history_pct,
+        CASE WHEN (ip.cnt + hist.cnt - common.cnt) > 0 
+             THEN ROUND((common.cnt * 100.0) / (ip.cnt + hist.cnt - common.cnt), 2) 
+             ELSE 0 END AS common_pct
+    FROM ip, hist, common;
 END;
 $$;
 
