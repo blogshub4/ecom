@@ -1,301 +1,258 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Static Layout</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSO Technology - Global Security</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<style>
+        body {
+            background-color: #f0f2f5;
+            font-family: Arial, sans-serif;
+            padding: 0;
+            margin: 0;
+            width: 100%;
+        }
 
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-}
-
-/* -------- Header Image -------- */
-.header-image {
+        .header {
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: white;
+    padding: 100px 0;
+    text-align: center;
+    position: relative;
     width: 100%;
-    height: 260px;       /* Adjust as per reference */
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
 }
 
-.header-image img {
+/* Ensure text is above the background */
+.header h1,
+.header p {
+    position: relative;
+    z-index: 2;
+}
+
+        .container {
+            width: 100%;
+            padding: 30px 0;
+            margin: 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+        }
+
+        .card {
+            position: relative;
+            background: white;
+            overflow: hidden;
+            cursor: pointer;
+            height: 100%;
+            margin: 0;
+            border: none;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .card-image {
+            height: 180px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .card-content {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+
+        .card h3 {
+            font-size: 16px;
+            font-weight: 500;
+            color: white;
+            margin: 0;
+        }
+
+        /* Card Sizing */
+        .card.small {
+            grid-column: span 3;
+        }
+
+        .card.medium {
+            grid-column: span 6;
+        }
+
+        .card.large {
+            grid-column: span 12;
+        }
+
+        /* Solid color cards */
+        .card-image.blue-bg {
+            background-color: #1e88e5;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-image.green-bg {
+            background-color: #43a047;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-image.blue-bg .card-content,
+        .card-image.green-bg .card-content {
+            background: transparent;
+            text-align: center;
+            padding: 0;
+        }
+
+        @media (max-width: 992px) {
+            .card.small {
+                grid-column: span 6;
+            }
+            .card.medium {
+                grid-column: span 12;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .card.small,
+            .card.medium,
+            .card.large {
+                grid-column: span 12;
+            }
+            
+            .header {
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
+                url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    color: white;
+    padding: 100px 0;
+    text-align: center;
+    position: relative;
     width: 100%;
-    height: 100%;
-    object-fit: cover;
 }
 
-/* -------- Tiles Grid -------- */
-.tiles-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 20px;
+/* Ensure text is above the background */
+.header h1,
+.header p {
+    position: relative;
+    z-index: 2;
 }
-
-/* Base tile */
-.tile {
-    background: #eee;
-    border-radius: 6px;
-    padding: 10px;
-    font-size: 22px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-/* --------- Individual Classes (You can change width anytime) --------- */
-
-/* Row 1 – all equal height */
-.tile-row1-a { width: 23%; height: 180px; }
-.tile-row1-b { width: 23%; height: 180px; }
-.tile-row1-c { width: 23%; height: 180px; }
-.tile-row1-d { width: 23%; height: 180px; }
-
-/* Row 2 – all equal height */
-.tile-row2-a { width: 23%; height: 180px; }
-.tile-row2-b { width: 23%; height: 180px; }
-.tile-row2-c { width: 23%; height: 180px; }
-.tile-row2-d { width: 23%; height: 180px; }
-
-/* Row 3 – all equal height */
-.tile-row3-a { width: 23%; height: 180px; }
-.tile-row3-b { width: 23%; height: 180px; }
-.tile-row3-c { width: 23%; height: 180px; }
-.tile-row3-d { width: 23%; height: 180px; }
-
-/* Responsive */
-@media (max-width: 768px) {
-    .tile-row1-a,
-    .tile-row1-b,
-    .tile-row1-c,
-    .tile-row1-d,
-    .tile-row2-a,
-    .tile-row2-b,
-    .tile-row2-c,
-    .tile-row2-d,
-    .tile-row3-a,
-    .tile-row3-b,
-    .tile-row3-c,
-    .tile-row3-d {
-        width: 48%;
-    }
-}
-
-@media (max-width: 480px) {
-    .tile-row1-a,
-    .tile-row1-b,
-    .tile-row1-c,
-    .tile-row1-d,
-    .tile-row2-a,
-    .tile-row2-b,
-    .tile-row2-c,
-    .tile-row2-d,
-    .tile-row3-a,
-    .tile-row3-b,
-    .tile-row3-c,
-    .tile-row3-d {
-        width: 100%;
-    }
-}
-
-</style>
+        }
+    </style>
 </head>
-
 <body>
+    <header class="header">
+        <h1>Global Security</h1>
+        <p>Welcome to CSO Technology</p>
+    </header>
 
-<!-- ------------ Header Image (No Animation) ------------ -->
-<div class="header-image">
-    <!-- Replace with your image -->
-    <img src="header.jpg" alt="Header">
-</div>
+    <div class="container">
+        <div class="grid">
+            <div class="card small">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1522071820081-009f0129c71c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>Meet the Team</h3>
+                    </div>
+                </div>
+            </div>
 
-<!-- ------------ Tiles ------------ -->
-<div class="tiles-grid">
+            <div class="card small">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>Court Orders</h3>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Row 1 -->
-    <div class="tile tile-row1-a">Tile 1</div>
-    <div class="tile tile-row1-b">Tile 2</div>
-    <div class="tile tile-row1-c">Tile 3</div>
-    <div class="tile tile-row1-d">Tile 4</div>
+            <div class="card small">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1584466977773-e625c37cdd50?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>Police Liaison Unit</h3>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Row 2 -->
-    <div class="tile tile-row2-a">Tile 5</div>
-    <div class="tile tile-row2-b">Tile 6</div>
-    <div class="tile tile-row2-c">Tile 7</div>
-    <div class="tile tile-row2-d">Tile 8</div>
+            <div class="card medium">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1558655146-9f40138edfeb?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>Court Orders Mobile App</h3>
+                    </div>
+                </div>
+            </div>
 
-    <!-- Row 3 -->
-    <div class="tile tile-row3-a">Tile 9</div>
-    <div class="tile tile-row3-b">Tile 10</div>
-    <div class="tile tile-row3-c">Tile 11</div>
-    <div class="tile tile-row3-d">Tile 12</div>
+            <div class="card medium">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1563986768609-322da13575f3?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>Threat Intelligence</h3>
+                    </div>
+                </div>
+            </div>
 
-</div>
+            <div class="card large">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>CCTV</h3>
+                    </div>
+                </div>
+            </div>
 
-</body>
-</html>
+            <div class="card small">
+                <div class="card-image green-bg">
+                    <div class="card-content">
+                        <h3>CybSafe</h3>
+                    </div>
+                </div>
+            </div>
 
+            <div class="card small">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>Incident Management</h3>
+                    </div>
+                </div>
+            </div>
 
+            <div class="card small">
+                <div class="card-image" style="background-image: url('https://images.unsplash.com/photo-1582550945153-1b81d27f2f0c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80&fit=crop&crop=faces&facepad=2.5')">
+                    <div class="card-content">
+                        <h3>Key Management</h3>
+                    </div>
+                </div>
+            </div>
 
-
-
-
-
-
-
-
-
-
-
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Static Layout</title>
-
-<style>
-
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-}
-
-/* -------- Header Image -------- */
-.header-image {
-    width: 100%;
-    height: 260px;       /* Adjust as per reference */
-    background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-.header-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* -------- Tiles Grid -------- */
-.tiles-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 20px;
-}
-
-/* Base tile */
-.tile {
-    background: #eee;
-    border-radius: 6px;
-    padding: 10px;
-    font-size: 22px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-
-/* --------- Individual Classes (You can change width anytime) --------- */
-
-/* Row 1 – all equal height */
-.tile-row1-a { width: 23%; height: 180px; }
-.tile-row1-b { width: 23%; height: 180px; }
-.tile-row1-c { width: 23%; height: 180px; }
-.tile-row1-d { width: 23%; height: 180px; }
-
-/* Row 2 – all equal height */
-.tile-row2-a { width: 23%; height: 180px; }
-.tile-row2-b { width: 23%; height: 180px; }
-.tile-row2-c { width: 23%; height: 180px; }
-.tile-row2-d { width: 23%; height: 180px; }
-
-/* Row 3 – all equal height */
-.tile-row3-a { width: 23%; height: 180px; }
-.tile-row3-b { width: 23%; height: 180px; }
-.tile-row3-c { width: 23%; height: 180px; }
-.tile-row3-d { width: 23%; height: 180px; }
-
-/* Responsive */
-@media (max-width: 768px) {
-    .tile-row1-a,
-    .tile-row1-b,
-    .tile-row1-c,
-    .tile-row1-d,
-    .tile-row2-a,
-    .tile-row2-b,
-    .tile-row2-c,
-    .tile-row2-d,
-    .tile-row3-a,
-    .tile-row3-b,
-    .tile-row3-c,
-    .tile-row3-d {
-        width: 48%;
-    }
-}
-
-@media (max-width: 480px) {
-    .tile-row1-a,
-    .tile-row1-b,
-    .tile-row1-c,
-    .tile-row1-d,
-    .tile-row2-a,
-    .tile-row2-b,
-    .tile-row2-c,
-    .tile-row2-d,
-    .tile-row3-a,
-    .tile-row3-b,
-    .tile-row3-c,
-    .tile-row3-d {
-        width: 100%;
-    }
-}
-
-</style>
-</head>
-
-<body>
-
-<!-- ------------ Header Image (No Animation) ------------ -->
-<div class="header-image">
-    <!-- Replace with your image -->
-    <img src="header.jpg" alt="Header">
-</div>
-
-<!-- ------------ Tiles ------------ -->
-<div class="tiles-grid">
-
-    <!-- Row 1 -->
-    <div class="tile tile-row1-a">Tile 1</div>
-    <div class="tile tile-row1-b">Tile 2</div>
-    <div class="tile tile-row1-c">Tile 3</div>
-    <div class="tile tile-row1-d">Tile 4</div>
-
-    <!-- Row 2 -->
-    <div class="tile tile-row2-a">Tile 5</div>
-    <div class="tile tile-row2-b">Tile 6</div>
-    <div class="tile tile-row2-c">Tile 7</div>
-    <div class="tile tile-row2-d">Tile 8</div>
-
-    <!-- Row 3 -->
-    <div class="tile tile-row3-a">Tile 9</div>
-    <div class="tile tile-row3-b">Tile 10</div>
-    <div class="tile tile-row3-c">Tile 11</div>
-    <div class="tile tile-row3-d">Tile 12</div>
-
-</div>
-
+            <div class="card small">
+                <div class="card-image blue-bg">
+                    <div class="card-content">
+                        <h3>Eagle Shield</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
