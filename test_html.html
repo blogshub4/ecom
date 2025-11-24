@@ -1,3 +1,161 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Static Layout</title>
+
+<style>
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+}
+
+/* -------- Header Image -------- */
+.header-image {
+    width: 100%;
+    height: 260px;       /* Adjust as per reference */
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.header-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* -------- Tiles Grid -------- */
+.tiles-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 20px;
+}
+
+/* Base tile */
+.tile {
+    background: #eee;
+    border-radius: 6px;
+    padding: 10px;
+    font-size: 22px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+/* --------- Individual Classes (You can change width anytime) --------- */
+
+/* Row 1 – all equal height */
+.tile-row1-a { width: 23%; height: 180px; }
+.tile-row1-b { width: 23%; height: 180px; }
+.tile-row1-c { width: 23%; height: 180px; }
+.tile-row1-d { width: 23%; height: 180px; }
+
+/* Row 2 – all equal height */
+.tile-row2-a { width: 23%; height: 180px; }
+.tile-row2-b { width: 23%; height: 180px; }
+.tile-row2-c { width: 23%; height: 180px; }
+.tile-row2-d { width: 23%; height: 180px; }
+
+/* Row 3 – all equal height */
+.tile-row3-a { width: 23%; height: 180px; }
+.tile-row3-b { width: 23%; height: 180px; }
+.tile-row3-c { width: 23%; height: 180px; }
+.tile-row3-d { width: 23%; height: 180px; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .tile-row1-a,
+    .tile-row1-b,
+    .tile-row1-c,
+    .tile-row1-d,
+    .tile-row2-a,
+    .tile-row2-b,
+    .tile-row2-c,
+    .tile-row2-d,
+    .tile-row3-a,
+    .tile-row3-b,
+    .tile-row3-c,
+    .tile-row3-d {
+        width: 48%;
+    }
+}
+
+@media (max-width: 480px) {
+    .tile-row1-a,
+    .tile-row1-b,
+    .tile-row1-c,
+    .tile-row1-d,
+    .tile-row2-a,
+    .tile-row2-b,
+    .tile-row2-c,
+    .tile-row2-d,
+    .tile-row3-a,
+    .tile-row3-b,
+    .tile-row3-c,
+    .tile-row3-d {
+        width: 100%;
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<!-- ------------ Header Image (No Animation) ------------ -->
+<div class="header-image">
+    <!-- Replace with your image -->
+    <img src="header.jpg" alt="Header">
+</div>
+
+<!-- ------------ Tiles ------------ -->
+<div class="tiles-grid">
+
+    <!-- Row 1 -->
+    <div class="tile tile-row1-a">Tile 1</div>
+    <div class="tile tile-row1-b">Tile 2</div>
+    <div class="tile tile-row1-c">Tile 3</div>
+    <div class="tile tile-row1-d">Tile 4</div>
+
+    <!-- Row 2 -->
+    <div class="tile tile-row2-a">Tile 5</div>
+    <div class="tile tile-row2-b">Tile 6</div>
+    <div class="tile tile-row2-c">Tile 7</div>
+    <div class="tile tile-row2-d">Tile 8</div>
+
+    <!-- Row 3 -->
+    <div class="tile tile-row3-a">Tile 9</div>
+    <div class="tile tile-row3-b">Tile 10</div>
+    <div class="tile tile-row3-c">Tile 11</div>
+    <div class="tile tile-row3-d">Tile 12</div>
+
+</div>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
