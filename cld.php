@@ -2,8 +2,8 @@
   "$schema": "https://developer.microsoft.com/json-schemas/sp/v2/view-formatting.schema.json",
   "calendarEventFormat": {
     "elmType": "div",
-    "attributes": {
-      "class": "=if([$Category]=='Meeting','sp-css-backgroundColor-successBackground50 sp-css-color-BlackText', if([$Category]=='Training','sp-css-backgroundColor-BgPeach sp-css-color-BlackText', if([$Category]=='Leave','sp-css-backgroundColor-BgGold sp-css-color-BlackText','sp-css-backgroundColor-neutralBackground20 sp-css-color-BlackText')))"
+    "style": {
+      "color": "=if([$Category]=='Meeting','red', if([$Category]=='Training','blue', if([$Category]=='Leave','green','black')))"
     },
     "children": [
       {
@@ -13,6 +13,7 @@
     ]
   }
 }
+
 
 
 
